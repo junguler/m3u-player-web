@@ -212,7 +212,7 @@
   <script>
     "use strict";
 
-    // CONFIG: set this to your API index.json (absolute URL works, even if it's in a different repo)
+    // Set this to your API's main index.json (absolute URL is fine, even cross-repo)
     const CONFIG = {
       API_INDEX_URL: 'https://junguler.github.io/m3u-rest-api/api/index.json',
       SITE_TITLE: 'My Radio'
@@ -220,16 +220,17 @@
 
     const els = {};
     const state = {
-      index: null,            // root index JSON
-      indexBase: null,        // URL object for the index base (for resolving relative playlist URLs)
-      playlistMap: new Map(), // slug -> { name, url, count }
-      currentRoute: null,     // '', 'p'
-      currentSlug: null,      // e.g. 'categories-1000'
-      currentPlaylist: null,  // fetched playlist JSON
-      currentItems: [],       // items of current playlist
-      currentIndex: -1,       // index within currentItems
+      index: null,
+      indexBase: null, // URL('…/api/index.json')
+      indexDir: null,  // URL('…/api/')
+      repoRoot: null,  // URL('…/<repo>/')
+      playlistMap: new Map(),
+      currentRoute: null,
+      currentSlug: null,
+      currentPlaylist: null,
+      currentItems: [],
+      currentIndex: -1,
       audio: null,
-      isPlaying: false,
       filter: ''
     };
 
@@ -257,7 +258,6 @@
       els.brand = document.getElementById('brand');
       state.audio = els.audio;
 
-      // Set brand text from config
       if (els.brand) els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
       updateTitle();
     }
@@ -276,7 +276,6 @@
         persistVolume();
       });
 
-      // Audio events
       els.audio.addEventListener('playing', () => updatePlayIcon(true));
       els.audio.addEventListener('pause', () => updatePlayIcon(false));
       els.audio.addEventListener('volumechange', updateMuteIcon);
@@ -289,27 +288,19 @@
     async function boot() {
       try {
         showLoading(true);
-        state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
+        state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href); // absolute
+        state.indexDir  = new URL('.', state.indexBase.href);  // .../<repo>/api/
+        state.repoRoot  = new URL('..', state.indexBase.href); // .../<repo>/
+
         const idx = await fetchJson(state.indexBase.href);
         state.index = idx;
         buildPlaylistMap(idx);
-        onRouteChange(); // initial route
+        onRouteChange();
       } catch (err) {
-        showError(`Failed to load index: ${err.message || err}`);
+        showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
       } finally {
         showLoading(false);
       }
-    }
-
-    function showLoading(flag) {
-      els.appLoading?.classList.toggle('loading', !!flag);
-      if (flag) {
-        els.app.innerHTML = `<div class="loading">Loading…</div>`;
-      }
-    }
-
-    function showError(msg) {
-      els.app.innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
     }
 
     function buildPlaylistMap(idx) {
@@ -317,7 +308,7 @@
       const arr = Array.isArray(idx.playlists) ? idx.playlists : [];
       for (const p of arr) {
         const slug = slugFromPlaylist(p);
-        const url = toFullUrl(p.url, state.indexBase);
+        const url = resolvePlaylistUrl(p.url);
         state.playlistMap.set(slug, {
           name: p.name || slug,
           url,
@@ -336,16 +327,31 @@
       }
       return slugify(p?.name || '');
     }
-
     function slugify(s) {
-      return String(s).trim().toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      return String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
     }
 
-    function toFullUrl(urlLike, base) {
-      try { return new URL(urlLike, base || location.href).href; }
-      catch { return urlLike; }
+    // Core fix: robust resolver + de-dup 'api/api'
+    function resolvePlaylistUrl(u) {
+      if (!u) return '';
+      if (/^https?:\/\//i.test(u)) return dedupeApi(u);
+      if (/^\/\//.test(u)) return dedupeApi(location.protocol + u);
+
+      // If playlist URL starts with '/': treat as repo-root (not site root)
+      if (u.startsWith('/')) {
+        return dedupeApi(new URL(u.replace(/^\//, ''), state.repoRoot).href);
+      }
+      // If it starts with 'api/': treat relative to repo root to avoid '/api/api/...'
+      if (u.startsWith('api/')) {
+        return dedupeApi(new URL(u, state.repoRoot).href);
+      }
+      // Otherwise resolve relative to the index directory (e.g., 'playlists/...')
+      return dedupeApi(new URL(u, state.indexDir).href);
+    }
+
+    function dedupeApi(href) {
+      // Remove any accidental '/api/api/' duplicates
+      return href.replace(/\/api\/api(\/|$)/g, '/api$1');
     }
 
     function onRouteChange() {
@@ -366,7 +372,6 @@
         setSearchPlaceholder('Search stations in this playlist…');
         return;
       }
-      // Fallback
       state.currentRoute = '';
       state.currentSlug = null;
       renderHome();
@@ -374,19 +379,16 @@
 
     function getHashParts() {
       const h = (location.hash || '').replace(/^#/, '');
-      const parts = h.split('/').filter(Boolean);
-      return parts;
+      return h.split('/').filter(Boolean);
     }
 
     function updateTitle(extra) {
       document.title = extra ? `${extra} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
     }
-
     function setSearchPlaceholder(text) {
       els.searchInput.placeholder = text;
     }
 
-    // Search handling
     function onSearch(e) {
       state.filter = e.target.value.trim().toLowerCase();
       if (state.currentRoute === 'p' && state.currentPlaylist) {
@@ -396,7 +398,6 @@
       }
     }
 
-    // Views
     function renderHome(isFilterOnly = false) {
       if (!state.index) {
         els.app.innerHTML = `<div class="loading">Loading…</div>`;
@@ -408,9 +409,7 @@
         ? all.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q))
         : all;
 
-      if (!isFilterOnly) {
-        updateTitle();
-      }
+      if (!isFilterOnly) updateTitle();
 
       if (!filtered.length) {
         els.app.innerHTML = `
@@ -448,28 +447,40 @@
 
     async function renderPlaylist(slug) {
       const meta = state.playlistMap.get(slug);
-      const url = meta?.url || toFullUrl(`playlists/${slug}.json`, state.indexBase);
+      let url = meta?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
       const name = meta?.name || slug;
       updateTitle(name);
 
       els.app.innerHTML = `
-        <div class="section-title">
-          <a class="link" href="#/">← Back</a>
-        </div>
+        <div class="section-title"><a class="link" href="#/">← Back</a></div>
         <div class="loading">Loading “${escapeHtml(name)}”…</div>
       `;
 
       try {
-        const data = await fetchJson(url);
+        let data;
+        try {
+          data = await fetchJson(url);
+        } catch (err) {
+          // If we somehow still hit a dup, try de-dupe fallback once
+          const alt = dedupeApi(url);
+          if (alt !== url) {
+            url = alt;
+            data = await fetchJson(url);
+          } else {
+            throw err;
+          }
+        }
         state.currentPlaylist = data;
         state.currentItems = Array.isArray(data.items) ? data.items : [];
         renderPlaylistContent(data);
       } catch (err) {
+        console.error('Playlist fetch failed:', url, err);
         els.app.innerHTML = `
-          <div class="section-title">
-            <a class="link" href="#/">← Back</a>
+          <div class="section-title"><a class="link" href="#/">← Back</a></div>
+          <div class="error">
+            Failed to load playlist: ${escapeHtml(err.message || err)}<br/>
+            Tried URL: <a class="link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
           </div>
-          <div class="error">Failed to load playlist: ${escapeHtml(err.message || err)}</div>
         `;
       }
     }
@@ -481,9 +492,7 @@
 
       const q = state.filter;
       const list = state.currentItems || [];
-      const filtered = q
-        ? list.filter(x => (x.name || '').toLowerCase().includes(q))
-        : list;
+      const filtered = q ? list.filter(x => (x.name || '').toLowerCase().includes(q)) : list;
 
       const frag = document.createDocumentFragment();
 
@@ -556,7 +565,6 @@
         li.appendChild(nameDiv);
         li.appendChild(actions);
 
-        // Clicking the row also plays
         li.addEventListener('click', () => playFromList(filtered, idx));
 
         ul.appendChild(li);
@@ -571,7 +579,6 @@
       const item = list[idx];
       if (!item) return;
 
-      // Find index in the master currentItems list so prev/next works
       const iInMaster = state.currentItems.findIndex(x => x === item || x.url === item.url);
       if (iInMaster >= 0) state.currentIndex = iInMaster;
 
@@ -599,7 +606,6 @@
         if (!url) return;
         els.audio.play().catch(err => {
           console.warn('Autoplay blocked or error:', err);
-          // UI stays ready; user can hit play
         });
       } catch (e) {
         console.error('Audio error:', e);
@@ -611,11 +617,9 @@
       if (els.audio.paused) els.audio.play();
       else els.audio.pause();
     }
-
     function updatePlayIcon(isPlaying) {
       els.playPauseBtn.textContent = isPlaying ? '⏸️' : '▶️';
     }
-
     function playNext() {
       if (!state.currentItems.length) return;
       const next = (state.currentIndex + 1) % state.currentItems.length;
@@ -625,7 +629,6 @@
       loadAndPlay(item.url);
       refreshActiveStationHighlight();
     }
-
     function playPrev() {
       if (!state.currentItems.length) return;
       const prev = (state.currentIndex - 1 + state.currentItems.length) % state.currentItems.length;
@@ -635,22 +638,18 @@
       loadAndPlay(item.url);
       refreshActiveStationHighlight();
     }
-
     function toggleMute() {
       els.audio.muted = !els.audio.muted;
       updateMuteIcon();
       persistVolume();
     }
-
     function updateMuteIcon() {
       const muted = els.audio.muted || els.audio.volume === 0;
       els.muteBtn.textContent = muted ? '🔇' : '🔊';
     }
-
     function onAudioError() {
       console.warn('Audio error', els.audio.error);
-      // Optional: auto-skip on error:
-      // playNext();
+      // playNext(); // optionally auto-skip on error
     }
 
     function refreshActiveStationHighlight() {
@@ -680,7 +679,6 @@
         localStorage.setItem('radio:last', JSON.stringify(data));
       } catch {}
     }
-
     function restoreLastSession() {
       try {
         const raw = localStorage.getItem('radio:last');
@@ -697,7 +695,6 @@
         }
       } catch {}
     }
-
     function persistVolume() {
       try {
         const raw = localStorage.getItem('radio:last');
@@ -707,7 +704,6 @@
         localStorage.setItem('radio:last', JSON.stringify(prev));
       } catch {}
     }
-
     function restoreVolume() {
       try {
         const raw = localStorage.getItem('radio:last');
@@ -728,7 +724,6 @@
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       return res.json();
     }
-
     function escapeHtml(s) {
       return String(s)
         .replaceAll('&', '&amp;')
@@ -737,7 +732,6 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
     }
-
     function debounce(fn, ms = 100) {
       let t;
       return (...args) => {
@@ -745,11 +739,9 @@
         t = setTimeout(() => fn.apply(null, args), ms);
       };
     }
-
     function toLocalTime(iso) {
       try { return new Date(iso).toLocaleString(); } catch { return iso; }
     }
-
     function shortenPath(url) {
       try {
         const u = new URL(url);
