@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My Radio</title>
+  <meta name="description" content="Simple web player for my M3U radio playlists." />
+  <meta name="theme-color" content="#0b0f14" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='52' font-size='48'%3E🎧%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --bg-soft: #111824;
+      --card: #0f1725;
+      --text: #e6edf3;
+      --muted: #aab6c3;
+      --brand: #5fb1ff;
+      --accent: #86efac;
+      --border: #1f2937;
+    }
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #f7f9fc;
+        --bg-soft: #ffffff;
+        --card: #ffffff;
+        --text: #0b0f14;
+        --muted: #4b5563;
+        --brand: #2563eb;
+        --accent: #16a34a;
+        --border: #e5e7eb;
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      color: var(--text);
+      background: radial-gradient(1200px 600px at 20% -10%, #13233a, transparent), var(--bg);
+    }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--bg-soft);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: saturate(1.2) blur(6px);
+    }
+    .brand {
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: var(--brand);
+      user-select: none;
+      text-decoration: none;
+    }
+    #searchInput {
+      flex: 1;
+      max-width: 560px;
+      appearance: none;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      outline: none;
+    }
+    #searchInput::placeholder { color: var(--muted); }
+
+    #app {
+      max-width: 1100px;
+      margin: 16px auto 96px;
+      padding: 0 16px;
+    }
+    .loading, .empty, .error {
+      color: var(--muted);
+      text-align: center;
+      padding: 24px 12px;
+    }
+    .section-title {
+      margin: 16px 0 10px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    /* Playlists grid */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: transform .08s ease, border-color .08s ease;
+      text-decoration: none;
+      color: inherit;
+    }
+    .card:hover { transform: translateY(-1px); border-color: #2b3a50; }
+    .card .title { display: block; font-weight: 600; color: var(--text); }
+    .card .meta { color: var(--muted); font-size: 13px; }
+    /* Station list */
+    .stations {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .station {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .station .play {
+      font-size: 18px;
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #111c2a;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .station .name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .station .actions { display: flex; gap: 6px; }
+    .station .open {
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .station.active { outline: 2px solid var(--brand); }
+    /* Player bar */
+    .player {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      display: grid;
+      grid-template-columns: auto auto auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.06)), var(--bg-soft);
+      backdrop-filter: saturate(1.2) blur(6px);
+    }
+    .player button {
+      height: 40px; width: 40px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #111c2a;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .player .now { min-width: 0; }
+    .now-station { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .now-playlist { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .volume { display: flex; align-items: center; gap: 8px; }
+    #volumeRange { width: 120px; }
+    /* Utilities */
+    .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .small { color: var(--muted); font-size: 13px; }
+    a.link { color: var(--brand); text-decoration: none; }
+    a.link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <noscript>This site needs JavaScript to load your playlists.</noscript>
+
+  <header class="topbar">
+    <a class="brand" id="brand" href="#/">🎧 My Radio</a>
+    <input type="search" id="searchInput" placeholder="Search…" autocomplete="off" />
+  </header>
+
+  <main id="app">
+    <div class="loading" id="appLoading">Loading…</div>
+  </main>
+
+  <footer class="player" id="playerBar" aria-label="Audio player" hidden>
+    <button id="prevBtn" title="Previous">⏮️</button>
+    <button id="playPauseBtn" title="Play/Pause">▶️</button>
+    <button id="nextBtn" title="Next">⏭️</button>
+
+    <div class="now">
+      <div id="nowStation" class="now-station">No station selected</div>
+      <div id="nowPlaylist" class="now-playlist"></div>
+    </div>
+
+    <div class="volume">
+      <button id="muteBtn" title="Mute/Unmute">🔊</button>
+      <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1" />
+    </div>
+
+    <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+  </footer>
+
+  <script>
+    "use strict";
+
+    // CONFIG: set this to your API index.json (absolute URL works, even if it's in a different repo)
+    const CONFIG = {
+      API_INDEX_URL: 'https://junguler.github.io/m3u-rest-api/api/index.json',
+      SITE_TITLE: 'My Radio'
+    };
+
+    const els = {};
+    const state = {
+      index: null,            // root index JSON
+      indexBase: null,        // URL object for the index base (for resolving relative playlist URLs)
+      playlistMap: new Map(), // slug -> { name, url, count }
+      currentRoute: null,     // '', 'p'
+      currentSlug: null,      // e.g. 'categories-1000'
+      currentPlaylist: null,  // fetched playlist JSON
+      currentItems: [],       // items of current playlist
+      currentIndex: -1,       // index within currentItems
+      audio: null,
+      isPlaying: false,
+      filter: ''
+    };
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      cacheDom();
+      wireUI();
+      boot();
+    }
+
+    function cacheDom() {
+      els.app = document.getElementById('app');
+      els.appLoading = document.getElementById('appLoading');
+      els.searchInput = document.getElementById('searchInput');
+      els.playerBar = document.getElementById('playerBar');
+      els.audio = document.getElementById('audio');
+      els.playPauseBtn = document.getElementById('playPauseBtn');
+      els.prevBtn = document.getElementById('prevBtn');
+      els.nextBtn = document.getElementById('nextBtn');
+      els.muteBtn = document.getElementById('muteBtn');
+      els.volumeRange = document.getElementById('volumeRange');
+      els.nowStation = document.getElementById('nowStation');
+      els.nowPlaylist = document.getElementById('nowPlaylist');
+      els.brand = document.getElementById('brand');
+      state.audio = els.audio;
+
+      // Set brand text from config
+      if (els.brand) els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+      updateTitle();
+    }
+
+    function wireUI() {
+      window.addEventListener('hashchange', onRouteChange);
+      els.searchInput.addEventListener('input', debounce(onSearch, 120));
+
+      els.playPauseBtn.addEventListener('click', togglePlayPause);
+      els.prevBtn.addEventListener('click', playPrev);
+      els.nextBtn.addEventListener('click', playNext);
+      els.muteBtn.addEventListener('click', toggleMute);
+      els.volumeRange.addEventListener('input', () => {
+        els.audio.volume = parseFloat(els.volumeRange.value);
+        updateMuteIcon();
+        persistVolume();
+      });
+
+      // Audio events
+      els.audio.addEventListener('playing', () => updatePlayIcon(true));
+      els.audio.addEventListener('pause', () => updatePlayIcon(false));
+      els.audio.addEventListener('volumechange', updateMuteIcon);
+      els.audio.addEventListener('error', onAudioError);
+
+      restoreVolume();
+      restoreLastSession();
+    }
+
+    async function boot() {
+      try {
+        showLoading(true);
+        state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
+        const idx = await fetchJson(state.indexBase.href);
+        state.index = idx;
+        buildPlaylistMap(idx);
+        onRouteChange(); // initial route
+      } catch (err) {
+        showError(`Failed to load index: ${err.message || err}`);
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    function showLoading(flag) {
+      els.appLoading?.classList.toggle('loading', !!flag);
+      if (flag) {
+        els.app.innerHTML = `<div class="loading">Loading…</div>`;
+      }
+    }
+
+    function showError(msg) {
+      els.app.innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
+    }
+
+    function buildPlaylistMap(idx) {
+      state.playlistMap.clear();
+      const arr = Array.isArray(idx.playlists) ? idx.playlists : [];
+      for (const p of arr) {
+        const slug = slugFromPlaylist(p);
+        const url = toFullUrl(p.url, state.indexBase);
+        state.playlistMap.set(slug, {
+          name: p.name || slug,
+          url,
+          count: p.count ?? null,
+          raw: p
+        });
+      }
+    }
+
+    function slugFromPlaylist(p) {
+      if (p && p.url) {
+        try {
+          const file = p.url.split('/').pop() || '';
+          if (file) return file.replace(/\.json$/i, '').toLowerCase();
+        } catch {}
+      }
+      return slugify(p?.name || '');
+    }
+
+    function slugify(s) {
+      return String(s).trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    function toFullUrl(urlLike, base) {
+      try { return new URL(urlLike, base || location.href).href; }
+      catch { return urlLike; }
+    }
+
+    function onRouteChange() {
+      const parts = getHashParts();
+      if (parts.length === 0) {
+        state.currentRoute = '';
+        state.currentSlug = null;
+        renderHome();
+        updateTitle();
+        setSearchPlaceholder('Search playlists…');
+        return;
+      }
+      if (parts[0] === 'p' && parts[1]) {
+        const slug = parts[1].toLowerCase();
+        state.currentRoute = 'p';
+        state.currentSlug = slug;
+        renderPlaylist(slug);
+        setSearchPlaceholder('Search stations in this playlist…');
+        return;
+      }
+      // Fallback
+      state.currentRoute = '';
+      state.currentSlug = null;
+      renderHome();
+    }
+
+    function getHashParts() {
+      const h = (location.hash || '').replace(/^#/, '');
+      const parts = h.split('/').filter(Boolean);
+      return parts;
+    }
+
+    function updateTitle(extra) {
+      document.title = extra ? `${extra} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
+    }
+
+    function setSearchPlaceholder(text) {
+      els.searchInput.placeholder = text;
+    }
+
+    // Search handling
+    function onSearch(e) {
+      state.filter = e.target.value.trim().toLowerCase();
+      if (state.currentRoute === 'p' && state.currentPlaylist) {
+        renderPlaylistContent(state.currentPlaylist, true);
+      } else {
+        renderHome(true);
+      }
+    }
+
+    // Views
+    function renderHome(isFilterOnly = false) {
+      if (!state.index) {
+        els.app.innerHTML = `<div class="loading">Loading…</div>`;
+        return;
+      }
+      const q = state.filter;
+      const all = [...state.playlistMap.entries()].map(([slug, info]) => ({ slug, ...info }));
+      const filtered = q
+        ? all.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q))
+        : all;
+
+      if (!isFilterOnly) {
+        updateTitle();
+      }
+
+      if (!filtered.length) {
+        els.app.innerHTML = `
+          <div class="section-title">Playlists</div>
+          <div class="empty">No playlists match “${escapeHtml(state.filter)}”.</div>
+        `;
+        return;
+      }
+
+      const frag = document.createDocumentFragment();
+
+      const title = document.createElement('div');
+      title.className = 'section-title';
+      title.textContent = `Playlists ${state.filter ? `(filtered)` : ''}`;
+      frag.appendChild(title);
+
+      const grid = document.createElement('div');
+      grid.className = 'grid';
+
+      for (const p of filtered) {
+        const card = document.createElement('a');
+        card.className = 'card';
+        card.href = `#/p/${p.slug}`;
+        card.innerHTML = `
+          <span class="title">${escapeHtml(p.name)}</span>
+          <span class="meta">${p.count ?? '—'} items</span>
+          <span class="small">Endpoint: ${escapeHtml(shortenPath(p.url))}</span>
+        `;
+        grid.appendChild(card);
+      }
+
+      frag.appendChild(grid);
+      els.app.replaceChildren(frag);
+    }
+
+    async function renderPlaylist(slug) {
+      const meta = state.playlistMap.get(slug);
+      const url = meta?.url || toFullUrl(`playlists/${slug}.json`, state.indexBase);
+      const name = meta?.name || slug;
+      updateTitle(name);
+
+      els.app.innerHTML = `
+        <div class="section-title">
+          <a class="link" href="#/">← Back</a>
+        </div>
+        <div class="loading">Loading “${escapeHtml(name)}”…</div>
+      `;
+
+      try {
+        const data = await fetchJson(url);
+        state.currentPlaylist = data;
+        state.currentItems = Array.isArray(data.items) ? data.items : [];
+        renderPlaylistContent(data);
+      } catch (err) {
+        els.app.innerHTML = `
+          <div class="section-title">
+            <a class="link" href="#/">← Back</a>
+          </div>
+          <div class="error">Failed to load playlist: ${escapeHtml(err.message || err)}</div>
+        `;
+      }
+    }
+
+    function renderPlaylistContent(data, isFilterOnly = false) {
+      const name = data.name || state.currentSlug || 'Playlist';
+      const count = data.count ?? (data.items?.length || 0);
+      if (!isFilterOnly) updateTitle(name);
+
+      const q = state.filter;
+      const list = state.currentItems || [];
+      const filtered = q
+        ? list.filter(x => (x.name || '').toLowerCase().includes(q))
+        : list;
+
+      const frag = document.createDocumentFragment();
+
+      const header = document.createElement('div');
+      header.className = 'row';
+      header.innerHTML = `
+        <div class="section-title">${escapeHtml(name)}</div>
+        <div class="small">Items: ${filtered.length} ${q ? `(filtered)` : `of ${count}`}</div>
+      `;
+      frag.appendChild(header);
+
+      if (data.sourceFile || data.generatedAt) {
+        const meta = document.createElement('div');
+        meta.className = 'small';
+        const bits = [];
+        if (data.sourceFile) bits.push(`Source: ${escapeHtml(data.sourceFile)}`);
+        if (data.generatedAt) bits.push(`Updated: ${escapeHtml(toLocalTime(data.generatedAt))}`);
+        meta.textContent = bits.join(' • ');
+        frag.appendChild(meta);
+      }
+
+      if (!filtered.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = `No stations match “${state.filter}”.`;
+        frag.appendChild(empty);
+        els.app.replaceChildren(frag);
+        return;
+      }
+
+      const ul = document.createElement('ul');
+      ul.className = 'stations';
+
+      filtered.forEach((it, idx) => {
+        const li = document.createElement('li');
+        li.className = 'station';
+        li.dataset.index = String(idx);
+
+        const isActive = state.currentIndex >= 0 && list[state.currentIndex] === it;
+        if (isActive) li.classList.add('active');
+
+        const play = document.createElement('button');
+        play.className = 'play';
+        play.title = 'Play';
+        play.textContent = '▶️';
+        play.addEventListener('click', (e) => {
+          e.stopPropagation();
+          playFromList(filtered, idx);
+        });
+
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'name';
+        nameDiv.textContent = it.name || '(Unnamed)';
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const openBtn = document.createElement('button');
+        openBtn.className = 'open';
+        openBtn.textContent = 'Open';
+        openBtn.title = 'Open stream URL in new tab';
+        openBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (it.url) window.open(it.url, '_blank', 'noopener');
+        });
+
+        actions.appendChild(openBtn);
+
+        li.appendChild(play);
+        li.appendChild(nameDiv);
+        li.appendChild(actions);
+
+        // Clicking the row also plays
+        li.addEventListener('click', () => playFromList(filtered, idx));
+
+        ul.appendChild(li);
+      });
+
+      frag.appendChild(ul);
+      els.app.replaceChildren(frag);
+    }
+
+    // Player controls
+    function playFromList(list, idx) {
+      const item = list[idx];
+      if (!item) return;
+
+      // Find index in the master currentItems list so prev/next works
+      const iInMaster = state.currentItems.findIndex(x => x === item || x.url === item.url);
+      if (iInMaster >= 0) state.currentIndex = iInMaster;
+
+      setNowPlaying(item);
+      loadAndPlay(item.url);
+      refreshActiveStationHighlight();
+    }
+
+    function setNowPlaying(item) {
+      const playlistName =
+        state.currentPlaylist?.name ||
+        state.playlistMap.get(state.currentSlug || '')?.name ||
+        'Playlist';
+
+      els.nowStation.textContent = item?.name || 'Unknown Station';
+      els.nowPlaylist.textContent = playlistName;
+      els.playerBar.hidden = false;
+
+      persistSession();
+    }
+
+    function loadAndPlay(url) {
+      try {
+        els.audio.src = url || '';
+        if (!url) return;
+        els.audio.play().catch(err => {
+          console.warn('Autoplay blocked or error:', err);
+          // UI stays ready; user can hit play
+        });
+      } catch (e) {
+        console.error('Audio error:', e);
+      }
+    }
+
+    function togglePlayPause() {
+      if (!els.audio.src) return;
+      if (els.audio.paused) els.audio.play();
+      else els.audio.pause();
+    }
+
+    function updatePlayIcon(isPlaying) {
+      els.playPauseBtn.textContent = isPlaying ? '⏸️' : '▶️';
+    }
+
+    function playNext() {
+      if (!state.currentItems.length) return;
+      const next = (state.currentIndex + 1) % state.currentItems.length;
+      state.currentIndex = next;
+      const item = state.currentItems[next];
+      setNowPlaying(item);
+      loadAndPlay(item.url);
+      refreshActiveStationHighlight();
+    }
+
+    function playPrev() {
+      if (!state.currentItems.length) return;
+      const prev = (state.currentIndex - 1 + state.currentItems.length) % state.currentItems.length;
+      state.currentIndex = prev;
+      const item = state.currentItems[prev];
+      setNowPlaying(item);
+      loadAndPlay(item.url);
+      refreshActiveStationHighlight();
+    }
+
+    function toggleMute() {
+      els.audio.muted = !els.audio.muted;
+      updateMuteIcon();
+      persistVolume();
+    }
+
+    function updateMuteIcon() {
+      const muted = els.audio.muted || els.audio.volume === 0;
+      els.muteBtn.textContent = muted ? '🔇' : '🔊';
+    }
+
+    function onAudioError() {
+      console.warn('Audio error', els.audio.error);
+      // Optional: auto-skip on error:
+      // playNext();
+    }
+
+    function refreshActiveStationHighlight() {
+      const lis = Array.from(document.querySelectorAll('.station'));
+      lis.forEach(li => li.classList.remove('active'));
+      if (state.currentIndex >= 0 && state.currentIndex < state.currentItems.length) {
+        const current = state.currentItems[state.currentIndex];
+        lis.forEach(li => {
+          const nameDiv = li.querySelector('.name');
+          if (nameDiv && current && nameDiv.textContent === (current.name || '')) {
+            li.classList.add('active');
+          }
+        });
+      }
+    }
+
+    // Persistence
+    function persistSession() {
+      try {
+        const data = {
+          slug: state.currentSlug,
+          index: state.currentIndex,
+          volume: els.audio.volume,
+          muted: els.audio.muted,
+          station: state.currentItems[state.currentIndex] || null
+        };
+        localStorage.setItem('radio:last', JSON.stringify(data));
+      } catch {}
+    }
+
+    function restoreLastSession() {
+      try {
+        const raw = localStorage.getItem('radio:last');
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (data && data.station && data.station.url) {
+          els.audio.volume = typeof data.volume === 'number' ? data.volume : 1;
+          els.audio.muted = !!data.muted;
+          els.playerBar.hidden = false;
+          els.nowStation.textContent = data.station.name || 'Station';
+          els.nowPlaylist.textContent = '';
+          els.audio.src = data.station.url;
+          updateMuteIcon();
+        }
+      } catch {}
+    }
+
+    function persistVolume() {
+      try {
+        const raw = localStorage.getItem('radio:last');
+        const prev = raw ? JSON.parse(raw) : {};
+        prev.volume = els.audio.volume;
+        prev.muted = els.audio.muted;
+        localStorage.setItem('radio:last', JSON.stringify(prev));
+      } catch {}
+    }
+
+    function restoreVolume() {
+      try {
+        const raw = localStorage.getItem('radio:last');
+        const prev = raw ? JSON.parse(raw) : {};
+        if (typeof prev.volume === 'number') els.audio.volume = prev.volume;
+        els.audio.muted = !!prev.muted;
+        els.volumeRange.value = String(els.audio.volume);
+        updateMuteIcon();
+      } catch {}
+    }
+
+    // Utils
+    async function fetchJson(url) {
+      const res = await fetch(url, {
+        headers: { 'Accept': 'application/json' },
+        cache: 'no-store'
+      });
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      return res.json();
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function debounce(fn, ms = 100) {
+      let t;
+      return (...args) => {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(null, args), ms);
+      };
+    }
+
+    function toLocalTime(iso) {
+      try { return new Date(iso).toLocaleString(); } catch { return iso; }
+    }
+
+    function shortenPath(url) {
+      try {
+        const u = new URL(url);
+        const sameHost = u.host === location.host;
+        return (sameHost ? '' : `${u.host}`) + u.pathname;
+      } catch { return url; }
+    }
+  </script>
+</body>
+</html>
