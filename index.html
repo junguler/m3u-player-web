@@ -69,7 +69,6 @@
       outline: none;
     }
     #searchInput::placeholder { color: var(--muted); }
-
     #app {
       max-width: 1100px;
       margin: 16px auto 96px;
@@ -85,7 +84,6 @@
       font-weight: 700;
       font-size: 18px;
     }
-    /* Playlists grid */
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -106,7 +104,6 @@
     .card:hover { transform: translateY(-1px); border-color: #2b3a50; }
     .card .title { display: block; font-weight: 600; color: var(--text); }
     .card .meta { color: var(--muted); font-size: 13px; }
-    /* Station list */
     .stations {
       display: grid;
       grid-template-columns: 1fr;
@@ -146,7 +143,6 @@
       cursor: pointer;
     }
     .station.active { outline: 2px solid var(--brand); }
-    /* Player bar */
     .player {
       position: fixed;
       left: 0; right: 0; bottom: 0;
@@ -172,7 +168,6 @@
     .now-playlist { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .volume { display: flex; align-items: center; gap: 8px; }
     #volumeRange { width: 120px; }
-    /* Utilities */
     .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .small { color: var(--muted); font-size: 13px; }
     a.link { color: var(--brand); text-decoration: none; }
@@ -212,7 +207,7 @@
   <script>
     "use strict";
 
-    // Set this to your API's main index.json (absolute URL is fine, even cross-repo)
+    // Your API index
     const CONFIG = {
       API_INDEX_URL: 'https://junguler.github.io/m3u-rest-api/api/index.json',
       SITE_TITLE: 'My Radio'
@@ -221,9 +216,9 @@
     const els = {};
     const state = {
       index: null,
-      indexBase: null, // URL('…/api/index.json')
-      indexDir: null,  // URL('…/api/')
-      repoRoot: null,  // URL('…/<repo>/')
+      indexBase: null, // .../api/index.json
+      indexDir: null,  // .../api/
+      repoRoot: null,  // .../m3u-rest-api/
       playlistMap: new Map(),
       currentRoute: null,
       currentSlug: null,
@@ -288,19 +283,29 @@
     async function boot() {
       try {
         showLoading(true);
-        state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href); // absolute
-        state.indexDir  = new URL('.', state.indexBase.href);  // .../<repo>/api/
-        state.repoRoot  = new URL('..', state.indexBase.href); // .../<repo>/
+
+        state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
+        state.indexDir  = new URL('.', state.indexBase.href);  // https://junguler.github.io/m3u-rest-api/api/
+        state.repoRoot  = new URL('..', state.indexBase.href); // https://junguler.github.io/m3u-rest-api/
 
         const idx = await fetchJson(state.indexBase.href);
         state.index = idx;
         buildPlaylistMap(idx);
+
         onRouteChange();
       } catch (err) {
         showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
       } finally {
         showLoading(false);
       }
+    }
+
+    function showLoading(flag) {
+      els.appLoading?.classList.toggle('loading', !!flag);
+      if (flag) els.app.innerHTML = `<div class="loading">Loading…</div>`;
+    }
+    function showError(msg) {
+      els.app.innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
     }
 
     function buildPlaylistMap(idx) {
@@ -322,36 +327,40 @@
       if (p && p.url) {
         try {
           const file = p.url.split('/').pop() || '';
-          if (file) return file.replace(/\.json$/i, '').toLowerCase();
+          if (file) return file.replace(/\.json(\?.*)?$/i, '').toLowerCase();
         } catch {}
       }
       return slugify(p?.name || '');
     }
     function slugify(s) {
-      return String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+      return String(s).trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
     }
 
-    // Core fix: robust resolver + de-dup 'api/api'
+    // Robust resolver that prevents /api/api/ and normalizes common cases
     function resolvePlaylistUrl(u) {
       if (!u) return '';
+      // Absolute http(s)
       if (/^https?:\/\//i.test(u)) return dedupeApi(u);
+      // Protocol-relative
       if (/^\/\//.test(u)) return dedupeApi(location.protocol + u);
 
-      // If playlist URL starts with '/': treat as repo-root (not site root)
+      // Leading slash: treat as repo-root (GitHub project pages safe)
       if (u.startsWith('/')) {
         return dedupeApi(new URL(u.replace(/^\//, ''), state.repoRoot).href);
       }
-      // If it starts with 'api/': treat relative to repo root to avoid '/api/api/...'
+      // Starts with 'api/': resolve from repo root to avoid '/api/api/...'
       if (u.startsWith('api/')) {
         return dedupeApi(new URL(u, state.repoRoot).href);
       }
-      // Otherwise resolve relative to the index directory (e.g., 'playlists/...')
+      // Default: relative to the index directory (…/api/)
       return dedupeApi(new URL(u, state.indexDir).href);
     }
 
     function dedupeApi(href) {
-      // Remove any accidental '/api/api/' duplicates
-      return href.replace(/\/api\/api(\/|$)/g, '/api$1');
+      // Collapse repeated '/api/' segments (handles /api/api/, /api/api/api/, etc.)
+      return href.replace(/(?:\/api)+(\/)/g, '/api$1');
     }
 
     function onRouteChange() {
@@ -447,7 +456,14 @@
 
     async function renderPlaylist(slug) {
       const meta = state.playlistMap.get(slug);
-      let url = meta?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
+      const primary = meta?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
+      // Extra fallbacks in case the index has odd paths
+      const candidates = unique([
+        primary,
+        resolvePlaylistUrl(`playlists/${slug}.json`),
+        resolvePlaylistUrl(`api/playlists/${slug}.json`)
+      ]);
+
       const name = meta?.name || slug;
       updateTitle(name);
 
@@ -457,29 +473,18 @@
       `;
 
       try {
-        let data;
-        try {
-          data = await fetchJson(url);
-        } catch (err) {
-          // If we somehow still hit a dup, try de-dupe fallback once
-          const alt = dedupeApi(url);
-          if (alt !== url) {
-            url = alt;
-            data = await fetchJson(url);
-          } else {
-            throw err;
-          }
-        }
+        const { url, data } = await fetchFirstOkJson(candidates);
         state.currentPlaylist = data;
         state.currentItems = Array.isArray(data.items) ? data.items : [];
         renderPlaylistContent(data);
       } catch (err) {
-        console.error('Playlist fetch failed:', url, err);
+        const lastTried = err?.__lastTried || candidates[candidates.length - 1] || primary;
+        console.error('Playlist fetch failed:', lastTried, err);
         els.app.innerHTML = `
           <div class="section-title"><a class="link" href="#/">← Back</a></div>
           <div class="error">
             Failed to load playlist: ${escapeHtml(err.message || err)}<br/>
-            Tried URL: <a class="link" href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(url)}</a>
+            Tried URL: <a class="link" href="${escapeHtml(lastTried)}" target="_blank" rel="noopener">${escapeHtml(lastTried)}</a>
           </div>
         `;
       }
@@ -649,7 +654,6 @@
     }
     function onAudioError() {
       console.warn('Audio error', els.audio.error);
-      // playNext(); // optionally auto-skip on error
     }
 
     function refreshActiveStationHighlight() {
@@ -715,15 +719,27 @@
       } catch {}
     }
 
-    // Utils
+    // Fetch helpers
     async function fetchJson(url) {
-      const res = await fetch(url, {
-        headers: { 'Accept': 'application/json' },
-        cache: 'no-store'
-      });
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' }, cache: 'no-store' });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       return res.json();
     }
+    async function fetchFirstOkJson(urls) {
+      let lastErr = null;
+      for (const url of urls) {
+        try {
+          const data = await fetchJson(url);
+          return { url, data };
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      if (lastErr) lastErr.__lastTried = urls[urls.length - 1];
+      throw lastErr || new Error('All candidate URLs failed');
+    }
+
+    // Utils
     function escapeHtml(s) {
       return String(s)
         .replaceAll('&', '&amp;')
@@ -748,6 +764,9 @@
         const sameHost = u.host === location.host;
         return (sameHost ? '' : `${u.host}`) + u.pathname;
       } catch { return url; }
+    }
+    function unique(arr) {
+      return Array.from(new Set(arr.filter(Boolean)));
     }
   </script>
 </body>
