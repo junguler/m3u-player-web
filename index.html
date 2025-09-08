@@ -60,8 +60,8 @@
       text-decoration: none;
     }
     #searchInput {
-      flex: 1;
-      max-width: 560px;
+      flex: 1; /* Make search input take all available space */
+      /* max-width: 560px; Removed max-width to expand */
       appearance: none;
       border: 1px solid var(--border);
       background: var(--card);
@@ -261,7 +261,8 @@
       els.brand = document.getElementById('brand');
       state.audio = els.audio;
 
-      if (els.brand) els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+      // Initial title setup
+      updateBrandText();
       updateTitle();
     }
 
@@ -287,7 +288,7 @@
       els.audio.addEventListener('loadedmetadata', updateCurrentSongInfo);
 
       restoreVolume();
-      restoreLastSession();
+      // Removed restoreLastSession() call to always load on the main page
     }
 
     async function boot() {
@@ -302,7 +303,13 @@
         state.index = idx;
         buildPlaylistMap(idx);
 
-        onRouteChange();
+        // Force to home page on boot
+        if (location.hash !== '#/') {
+          location.hash = '#/';
+        } else {
+          onRouteChange(); // Process the home route if already there
+        }
+
       } catch (err) {
         showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
       } finally {
@@ -379,6 +386,7 @@
         renderHome();
         updateTitle();
         setSearchPlaceholder('Search playlists…');
+        updateBrandText('home'); // Set brand text to default
         return;
       }
       if (parts[0] === 'p' && parts[1]) {
@@ -386,12 +394,14 @@
         state.currentRoute = 'p';
         state.currentSlug = slug;
         renderPlaylist(slug);
-        setSearchPlaceholder('Search streams in this playlist…'); /* Changed placeholder text */
+        setSearchPlaceholder('Search streams in this playlist…');
+        updateBrandText('back'); // Set brand text to "Go back"
         return;
       }
       state.currentRoute = '';
       state.currentSlug = null;
       renderHome();
+      updateBrandText('home'); // Set brand text to default
     }
 
     function getHashParts() {
@@ -401,6 +411,15 @@
 
     function updateTitle(extra) {
       document.title = extra ? `${extra} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
+    }
+    function updateBrandText(routeType) {
+        if (els.brand) {
+            if (routeType === 'back') {
+                els.brand.innerHTML = `&larr; Go Back`;
+            } else {
+                els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+            }
+        }
     }
     function setSearchPlaceholder(text) {
       els.searchInput.placeholder = text;
@@ -452,8 +471,7 @@
         card.href = `#/p/${p.slug}`;
         card.innerHTML = `
           <span class="title">${escapeHtml(p.name)}</span>
-          <span class="meta">${p.count ?? '—'} streams</span> <!-- Changed 'items' to 'streams' -->
-          <!-- Removed endpoint link -->
+          <span class="meta">${p.count ?? '—'} streams</span>
         `;
         grid.appendChild(card);
       }
@@ -510,7 +528,7 @@
       header.className = 'row';
       header.innerHTML = `
         <div class="section-title">${escapeHtml(name)}</div>
-        <div class="small">Streams: ${filtered.length} ${q ? `(filtered)` : `of ${count}`}</div> <!-- Changed 'Items' to 'Streams' -->
+        <div class="small">Streams: ${filtered.length} ${q ? `(filtered)` : `of ${count}`}</div>
       `;
       frag.appendChild(header);
 
@@ -527,7 +545,7 @@
       if (!filtered.length) {
         const empty = document.createElement('div');
         empty.className = 'empty';
-        empty.textContent = `No streams match “${state.filter}”.`; /* Changed 'stations' to 'streams' */
+        empty.textContent = `No streams match “${state.filter}”.`;
         frag.appendChild(empty);
         els.app.replaceChildren(frag);
         return;
@@ -671,7 +689,7 @@
       if (els.audio.textTracks && els.audio.textTracks.length > 0) {
         const track = Array.from(els.audio.textTracks).find(t => t.kind === 'metadata');
         if (track) {
-          track.oncuechange = null; // Clear previous listeners to prevent multiple
+          track.oncuechange = null;
           track.oncuechange = () => {
             if (track.activeCues.length > 0) {
               const cue = track.activeCues[0];
@@ -686,7 +704,6 @@
             }
             els.nowSong.textContent = songInfo;
           };
-          // Check immediately for existing cues
           if (track.activeCues.length > 0) {
               const cue = track.activeCues[0];
               const match = /StreamTitle='([^;]+)';/.exec(cue.text);
@@ -737,37 +754,23 @@
           muted: els.audio.muted,
           station: state.currentItems[state.currentIndex] || null
         };
-        localStorage.setItem('radio:last', JSON.stringify(data));
+        // Not setting 'radio:last' in localStorage to prevent remembering last page
+        // localStorage.setItem('radio:last', JSON.stringify(data));
       } catch {}
     }
     function restoreLastSession() {
-      try {
-        const raw = localStorage.getItem('radio:last');
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        if (data && data.station && data.station.url) {
-          els.audio.volume = typeof data.volume === 'number' ? data.volume : 1;
-          els.audio.muted = !!data.muted;
-          els.playerBar.hidden = false;
-          els.nowStation.textContent = data.station.name || 'Station';
-          els.nowSong.textContent = '';
-          els.audio.src = data.station.url;
-          updateMuteIcon();
-
-          if (data.slug) {
-            location.hash = `#/p/${data.slug}`;
-            state.currentIndex = data.index;
-          }
-        }
-      } catch {}
+      // This function is intentionally left empty/modified
+      // to prevent restoring the last session.
+      // The application will always load to the main page.
     }
     function persistVolume() {
       try {
-        const raw = localStorage.getItem('radio:last');
+        const raw = localStorage.getItem('radio:last'); // Still load existing 'radio:last'
         const prev = raw ? JSON.parse(raw) : {};
         prev.volume = els.audio.volume;
         prev.muted = els.audio.muted;
-        localStorage.setItem('radio:last', JSON.stringify(prev));
+        // Only update volume/mute in localStorage, not other session data
+        localStorage.setItem('radio:last', JSON.stringify({ volume: prev.volume, muted: prev.muted }));
       } catch {}
     }
     function restoreVolume() {
