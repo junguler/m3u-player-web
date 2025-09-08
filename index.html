@@ -36,11 +36,13 @@
       margin: 0;
       font: 16px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Helvetica Neue", Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
       color: var(--text);
-      background: radial-gradient(1200px 600px at 20% -10%, #13233a, transparent), var(--bg);
+      background: var(--bg);
     }
     .topbar {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       z-index: 10;
       display: flex;
       align-items: center;
@@ -71,7 +73,7 @@
     #searchInput::placeholder { color: var(--muted); }
     #app {
       max-width: 1100px;
-      margin: 16px auto 96px;
+      margin: 70px auto 96px; /* Approx header height + 16px spacing */
       padding: 0 16px;
     }
     .loading, .empty, .error {
@@ -83,6 +85,11 @@
       margin: 16px 0 10px;
       font-weight: 700;
       font-size: 18px;
+    }
+    .playlist-meta { /* Added class for consistent styling and spacing */
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 16px; /* Added spacing below meta info */
     }
     .grid {
       display: grid;
@@ -165,7 +172,8 @@
     }
     .player .now { min-width: 0; }
     .now-station { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .now-playlist { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    /* now-song will hold the current song title */
+    .now-song { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .volume { display: flex; align-items: center; gap: 8px; }
     #volumeRange { width: 120px; }
     .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
@@ -193,7 +201,7 @@
 
     <div class="now">
       <div id="nowStation" class="now-station">No station selected</div>
-      <div id="nowPlaylist" class="now-playlist"></div>
+      <div id="nowSong" class="now-song"></div> <!-- Changed from nowPlaylist to nowSong -->
     </div>
 
     <div class="volume">
@@ -249,7 +257,7 @@
       els.muteBtn = document.getElementById('muteBtn');
       els.volumeRange = document.getElementById('volumeRange');
       els.nowStation = document.getElementById('nowStation');
-      els.nowPlaylist = document.getElementById('nowPlaylist');
+      els.nowSong = document.getElementById('nowSong'); // Updated to nowSong
       els.brand = document.getElementById('brand');
       state.audio = els.audio;
 
@@ -275,6 +283,9 @@
       els.audio.addEventListener('pause', () => updatePlayIcon(false));
       els.audio.addEventListener('volumechange', updateMuteIcon);
       els.audio.addEventListener('error', onAudioError);
+      els.audio.addEventListener('timeupdate', updateCurrentSongInfo); // Listen for timeupdate to get song info
+      els.audio.addEventListener('loadedmetadata', updateCurrentSongInfo);
+
 
       restoreVolume();
       restoreLastSession();
@@ -285,8 +296,8 @@
         showLoading(true);
 
         state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
-        state.indexDir  = new URL('.', state.indexBase.href);  // https://junguler.github.io/m3u-rest-api/api/
-        state.repoRoot  = new URL('..', state.indexBase.href); // https://junguler.github.io/m3u-rest-api/
+        state.indexDir  = new URL('.', state.indexBase.href);
+        state.repoRoot  = new URL('..', state.indexBase.href);
 
         const idx = await fetchJson(state.indexBase.href);
         state.index = idx;
@@ -338,33 +349,32 @@
         .replace(/^-+|-+$/g, '');
     }
 
-    // Robust resolver that prevents /api/api/ and normalizes common cases
     function resolvePlaylistUrl(u) {
       if (!u) return '';
-      // Absolute http(s)
       if (/^https?:\/\//i.test(u)) return dedupeApi(u);
-      // Protocol-relative
       if (/^\/\//.test(u)) return dedupeApi(location.protocol + u);
-
-      // Leading slash: treat as repo-root (GitHub project pages safe)
       if (u.startsWith('/')) {
         return dedupeApi(new URL(u.replace(/^\//, ''), state.repoRoot).href);
       }
-      // Starts with 'api/': resolve from repo root to avoid '/api/api/...'
       if (u.startsWith('api/')) {
         return dedupeApi(new URL(u, state.repoRoot).href);
       }
-      // Default: relative to the index directory (…/api/)
       return dedupeApi(new URL(u, state.indexDir).href);
     }
 
     function dedupeApi(href) {
-      // Collapse repeated '/api/' segments (handles /api/api/, /api/api/api/, etc.)
       return href.replace(/(?:\/api)+(\/)/g, '/api$1');
     }
 
     function onRouteChange() {
       const parts = getHashParts();
+      // Scroll to top on route change
+      window.scrollTo(0, 0);
+
+      // Clear search input and filter state when navigating to a new page (or home)
+      els.searchInput.value = '';
+      state.filter = '';
+
       if (parts.length === 0) {
         state.currentRoute = '';
         state.currentSlug = null;
@@ -457,7 +467,6 @@
     async function renderPlaylist(slug) {
       const meta = state.playlistMap.get(slug);
       const primary = meta?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
-      // Extra fallbacks in case the index has odd paths
       const candidates = unique([
         primary,
         resolvePlaylistUrl(`playlists/${slug}.json`),
@@ -468,7 +477,6 @@
       updateTitle(name);
 
       els.app.innerHTML = `
-        <div class="section-title"><a class="link" href="#/">← Back</a></div>
         <div class="loading">Loading “${escapeHtml(name)}”…</div>
       `;
 
@@ -481,7 +489,6 @@
         const lastTried = err?.__lastTried || candidates[candidates.length - 1] || primary;
         console.error('Playlist fetch failed:', lastTried, err);
         els.app.innerHTML = `
-          <div class="section-title"><a class="link" href="#/">← Back</a></div>
           <div class="error">
             Failed to load playlist: ${escapeHtml(err.message || err)}<br/>
             Tried URL: <a class="link" href="${escapeHtml(lastTried)}" target="_blank" rel="noopener">${escapeHtml(lastTried)}</a>
@@ -511,7 +518,7 @@
 
       if (data.sourceFile || data.generatedAt) {
         const meta = document.createElement('div');
-        meta.className = 'small';
+        meta.className = 'playlist-meta';
         const bits = [];
         if (data.sourceFile) bits.push(`Source: ${escapeHtml(data.sourceFile)}`);
         if (data.generatedAt) bits.push(`Updated: ${escapeHtml(toLocalTime(data.generatedAt))}`);
@@ -531,12 +538,11 @@
       const ul = document.createElement('ul');
       ul.className = 'stations';
 
-      filtered.forEach((it, idx) => {
+      filtered.forEach((it) => {
         const li = document.createElement('li');
         li.className = 'station';
-        li.dataset.index = String(idx);
 
-        const isActive = state.currentIndex >= 0 && list[state.currentIndex] === it;
+        const isActive = state.currentIndex >= 0 && state.currentItems[state.currentIndex] === it;
         if (isActive) li.classList.add('active');
 
         const play = document.createElement('button');
@@ -545,7 +551,10 @@
         play.textContent = '▶️';
         play.addEventListener('click', (e) => {
           e.stopPropagation();
-          playFromList(filtered, idx);
+          const masterIndex = state.currentItems.findIndex(x => x === it || x.url === it.url);
+          if (masterIndex !== -1) {
+            playFromList(state.currentItems, masterIndex);
+          }
         });
 
         const nameDiv = document.createElement('div');
@@ -570,13 +579,19 @@
         li.appendChild(nameDiv);
         li.appendChild(actions);
 
-        li.addEventListener('click', () => playFromList(filtered, idx));
+        li.addEventListener('click', () => {
+          const masterIndex = state.currentItems.findIndex(x => x === it || x.url === it.url);
+          if (masterIndex !== -1) {
+            playFromList(state.currentItems, masterIndex);
+          }
+        });
 
         ul.appendChild(li);
       });
 
       frag.appendChild(ul);
       els.app.replaceChildren(frag);
+      refreshActiveStationHighlight();
     }
 
     // Player controls
@@ -584,8 +599,7 @@
       const item = list[idx];
       if (!item) return;
 
-      const iInMaster = state.currentItems.findIndex(x => x === item || x.url === item.url);
-      if (iInMaster >= 0) state.currentIndex = iInMaster;
+      state.currentIndex = idx;
 
       setNowPlaying(item);
       loadAndPlay(item.url);
@@ -593,16 +607,14 @@
     }
 
     function setNowPlaying(item) {
-      const playlistName =
-        state.currentPlaylist?.name ||
-        state.playlistMap.get(state.currentSlug || '')?.name ||
-        'Playlist';
-
       els.nowStation.textContent = item?.name || 'Unknown Station';
-      els.nowPlaylist.textContent = playlistName;
+      els.nowSong.textContent = ''; // Clear song info initially
       els.playerBar.hidden = false;
 
       persistSession();
+      // Ensure timeupdate listener is active to pick up song changes
+      // And call update once manually in case metadata is immediate.
+      updateCurrentSongInfo();
     }
 
     function loadAndPlay(url) {
@@ -654,19 +666,74 @@
     }
     function onAudioError() {
       console.warn('Audio error', els.audio.error);
+      els.nowSong.textContent = ''; // Leave empty on error
     }
+
+    // Updated function to show metadata or leave empty
+    function updateCurrentSongInfo() {
+      let songInfo = '';
+
+      // Attempt to get metadata from text tracks (e.g., Shoutcast/Icecast metadata)
+      if (els.audio.textTracks && els.audio.textTracks.length > 0) {
+        const track = Array.from(els.audio.textTracks).find(t => t.kind === 'metadata');
+        if (track) {
+          // Clear previous cuechange listeners to avoid multiple updates if track changes
+          track.oncuechange = null;
+          track.oncuechange = () => {
+            if (track.activeCues.length > 0) {
+              const cue = track.activeCues[0];
+              const match = /StreamTitle='([^;]+)';/.exec(cue.text);
+              if (match && match[1]) {
+                songInfo = match[1];
+              } else {
+                songInfo = cue.text;
+              }
+            } else {
+              songInfo = ''; // Clear if no active cues
+            }
+            els.nowSong.textContent = songInfo; // Update when cue changes
+          };
+          // Also check immediately in case there's an active cue on loadedmetadata or initial call
+          if (track.activeCues.length > 0) {
+              const cue = track.activeCues[0];
+              const match = /StreamTitle='([^;]+)';/.exec(cue.text);
+              if (match && match[1]) {
+                songInfo = match[1];
+              } else {
+                songInfo = cue.text;
+              }
+          }
+        }
+      }
+
+      // Fallback to Media Session API title if available and not already set
+      if (!songInfo && navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title) {
+          songInfo = navigator.mediaSession.metadata.title;
+      }
+
+      // Fallback to audio element's title attribute if available and not already set
+      if (!songInfo && els.audio.title) {
+          songInfo = els.audio.title;
+      }
+
+      // Update the display, will be empty string if no info found
+      els.nowSong.textContent = songInfo;
+    }
+
 
     function refreshActiveStationHighlight() {
       const lis = Array.from(document.querySelectorAll('.station'));
       lis.forEach(li => li.classList.remove('active'));
       if (state.currentIndex >= 0 && state.currentIndex < state.currentItems.length) {
-        const current = state.currentItems[state.currentIndex];
-        lis.forEach(li => {
+        const currentPlayingItem = state.currentItems[state.currentIndex];
+        for (const li of lis) {
           const nameDiv = li.querySelector('.name');
-          if (nameDiv && current && nameDiv.textContent === (current.name || '')) {
+          if (nameDiv && currentPlayingItem && nameDiv.textContent === (currentPlayingItem.name || '')) {
             li.classList.add('active');
+            li.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            break;
           }
-        });
+        }
       }
     }
 
@@ -693,9 +760,14 @@
           els.audio.muted = !!data.muted;
           els.playerBar.hidden = false;
           els.nowStation.textContent = data.station.name || 'Station';
-          els.nowPlaylist.textContent = '';
+          els.nowSong.textContent = ''; // Initialize empty
           els.audio.src = data.station.url;
           updateMuteIcon();
+
+          if (data.slug) {
+            location.hash = `#/p/${data.slug}`;
+            state.currentIndex = data.index;
+          }
         }
       } catch {}
     }
