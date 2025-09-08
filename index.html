@@ -154,7 +154,7 @@
       position: fixed;
       left: 0; right: 0; bottom: 0;
       display: grid;
-      grid-template-columns: auto auto auto 1fr auto;
+      grid-template-columns: auto auto auto auto 1fr auto;
       align-items: center;
       gap: 10px;
       padding: 10px 12px;
@@ -175,7 +175,8 @@
     /* now-song will hold the current song title */
     .now-song { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .volume { display: flex; align-items: center; gap: 8px; }
-    #volumeRange { width: 120px; }
+    .volume-percentage { font-size: 13px; color: var(--muted); min-width: 4ch; text-align: right; }
+    #volumeRange { width: 100px; }
     .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     .small { color: var(--muted); font-size: 13px; }
     a.link { color: var(--brand); text-decoration: none; }
@@ -198,6 +199,7 @@
     <button id="prevBtn" title="Previous">⏮️</button>
     <button id="playPauseBtn" title="Play/Pause">▶️</button>
     <button id="nextBtn" title="Next">⏭️</button>
+    <button id="shuffleBtn" title="Shuffle">🔀</button>
 
     <div class="now">
       <div id="nowStation" class="now-station">No station selected</div>
@@ -206,7 +208,10 @@
 
     <div class="volume">
       <button id="muteBtn" title="Mute/Unmute">🔊</button>
+      <button id="volDownBtn" title="Volume Down">-</button>
       <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1" />
+      <button id="volUpBtn" title="Volume Up">+</button>
+      <span id="volumePercentage" class="volume-percentage">100%</span>
     </div>
 
     <audio id="audio" preload="none" crossorigin="anonymous"></audio>
@@ -234,6 +239,9 @@
       currentItems: [],
       currentIndex: -1,
       audio: null,
+      audioContext: null,
+      audioSource: null,
+      compressor: null,
       filter: ''
     };
 
@@ -254,8 +262,12 @@
       els.playPauseBtn = document.getElementById('playPauseBtn');
       els.prevBtn = document.getElementById('prevBtn');
       els.nextBtn = document.getElementById('nextBtn');
+      els.shuffleBtn = document.getElementById('shuffleBtn');
       els.muteBtn = document.getElementById('muteBtn');
       els.volumeRange = document.getElementById('volumeRange');
+      els.volumePercentage = document.getElementById('volumePercentage');
+      els.volUpBtn = document.getElementById('volUpBtn');
+      els.volDownBtn = document.getElementById('volDownBtn');
       els.nowStation = document.getElementById('nowStation');
       els.nowSong = document.getElementById('nowSong');
       els.brand = document.getElementById('brand');
@@ -273,16 +285,15 @@
       els.playPauseBtn.addEventListener('click', togglePlayPause);
       els.prevBtn.addEventListener('click', playPrev);
       els.nextBtn.addEventListener('click', playNext);
+      els.shuffleBtn.addEventListener('click', shuffle);
       els.muteBtn.addEventListener('click', toggleMute);
-      els.volumeRange.addEventListener('input', () => {
-        els.audio.volume = parseFloat(els.volumeRange.value);
-        updateMuteIcon();
-        persistVolume();
-      });
+      els.volumeRange.addEventListener('input', () => setVolume(parseFloat(els.volumeRange.value)));
+      els.volUpBtn.addEventListener('click', volumeUp);
+      els.volDownBtn.addEventListener('click', volumeDown);
 
       els.audio.addEventListener('playing', () => updatePlayIcon(true));
       els.audio.addEventListener('pause', () => updatePlayIcon(false));
-      els.audio.addEventListener('volumechange', updateMuteIcon);
+      els.audio.addEventListener('volumechange', updateVolumeDisplay);
       els.audio.addEventListener('error', onAudioError);
       els.audio.addEventListener('timeupdate', updateCurrentSongInfo);
       els.audio.addEventListener('loadedmetadata', updateCurrentSongInfo);
@@ -631,13 +642,60 @@
       updateCurrentSongInfo();
     }
 
+    function setupAudioNormalization() {
+      if (state.audioContext) return;
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        state.audioContext = new AudioContext();
+        state.audioSource = state.audioContext.createMediaElementSource(els.audio);
+        state.compressor = state.audioContext.createDynamicsCompressor();
+
+        // A common setup for normalization:
+        // -50dB threshold to catch quiet sounds
+        // 40dB knee for a smooth transition
+        // 12:1 ratio for strong compression
+        // 0s attack for instant response
+        // 0.25s release for a natural decay
+        state.compressor.threshold.setValueAtTime(-50, state.audioContext.currentTime);
+        state.compressor.knee.setValueAtTime(40, state.audioContext.currentTime);
+        state.compressor.ratio.setValueAtTime(12, state.audioContext.currentTime);
+        state.compressor.attack.setValueAtTime(0, state.audioContext.currentTime);
+        state.compressor.release.setValueAtTime(0.25, state.audioContext.currentTime);
+
+        state.audioSource.connect(state.compressor);
+        state.compressor.connect(state.audioContext.destination);
+      } catch (e) {
+        console.error("Failed to initialize Web Audio API for normalization:", e);
+      }
+    }
+
+    function playAudio() {
+      if (!els.audio.src) return;
+      if (!state.audioContext) {
+        setupAudioNormalization();
+      }
+      if (state.audioContext && state.audioContext.state === 'suspended') {
+        state.audioContext.resume().catch(e => console.error("Audio context resume failed:", e));
+      }
+      els.audio.play().catch(err => {
+        if (err.name !== 'AbortError') { // AbortError is fine, happens on src change
+          console.warn('Audio play failed:', err);
+        }
+      });
+    }
+
+    function pauseAudio() {
+      els.audio.pause();
+    }
+
     function loadAndPlay(url) {
       try {
         els.audio.src = url || '';
-        if (!url) return;
-        els.audio.play().catch(err => {
-          console.warn('Autoplay blocked or error:', err);
-        });
+        if (!url) {
+          pauseAudio();
+          return;
+        }
+        playAudio();
       } catch (e) {
         console.error('Audio error:', e);
       }
@@ -645,8 +703,11 @@
 
     function togglePlayPause() {
       if (!els.audio.src) return;
-      if (els.audio.paused) els.audio.play();
-      else els.audio.pause();
+      if (els.audio.paused) {
+        playAudio();
+      } else {
+        pauseAudio();
+      }
     }
     function updatePlayIcon(isPlaying) {
       els.playPauseBtn.textContent = isPlaying ? '⏸️' : '▶️';
@@ -669,14 +730,38 @@
       loadAndPlay(item.url);
       refreshActiveStationHighlight();
     }
+    async function shuffle() {
+      if (state.currentRoute === 'p' && state.currentItems.length > 0) {
+        const randomIndex = Math.floor(Math.random() * state.currentItems.length);
+        playFromList(state.currentItems, randomIndex);
+      } else if (state.playlistMap.size > 0) {
+        const playlists = Array.from(state.playlistMap.keys());
+        const randomSlug = playlists[Math.floor(Math.random() * playlists.length)];
+        location.hash = `#/p/${randomSlug}`;
+      }
+    }
     function toggleMute() {
       els.audio.muted = !els.audio.muted;
-      updateMuteIcon();
       persistVolume();
     }
     function updateMuteIcon() {
       const muted = els.audio.muted || els.audio.volume === 0;
       els.muteBtn.textContent = muted ? '🔇' : '🔊';
+    }
+    function updateVolumeDisplay() {
+      els.volumeRange.value = els.audio.volume;
+      els.volumePercentage.textContent = `${Math.round(els.audio.volume * 100)}%`;
+      updateMuteIcon();
+      persistVolume();
+    }
+    function setVolume(newVolume) {
+      els.audio.volume = Math.max(0, Math.min(1, newVolume));
+    }
+    function volumeUp() {
+      setVolume(els.audio.volume + 0.1);
+    }
+    function volumeDown() {
+      setVolume(els.audio.volume - 0.1);
     }
     function onAudioError() {
       console.warn('Audio error', els.audio.error);
@@ -779,8 +864,7 @@
         const prev = raw ? JSON.parse(raw) : {};
         if (typeof prev.volume === 'number') els.audio.volume = prev.volume;
         els.audio.muted = !!prev.muted;
-        els.volumeRange.value = String(els.audio.volume);
-        updateMuteIcon();
+        updateVolumeDisplay();
       } catch {}
     }
 
