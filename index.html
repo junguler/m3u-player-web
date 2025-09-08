@@ -86,10 +86,10 @@
       font-weight: 700;
       font-size: 18px;
     }
-    .playlist-meta { /* Added class for consistent styling and spacing */
+    .playlist-meta {
         color: var(--muted);
         font-size: 13px;
-        margin-bottom: 16px; /* Added spacing below meta info */
+        margin-bottom: 16px;
     }
     .grid {
       display: grid;
@@ -201,7 +201,7 @@
 
     <div class="now">
       <div id="nowStation" class="now-station">No station selected</div>
-      <div id="nowSong" class="now-song"></div> <!-- Changed from nowPlaylist to nowSong -->
+      <div id="nowSong" class="now-song"></div>
     </div>
 
     <div class="volume">
@@ -257,7 +257,7 @@
       els.muteBtn = document.getElementById('muteBtn');
       els.volumeRange = document.getElementById('volumeRange');
       els.nowStation = document.getElementById('nowStation');
-      els.nowSong = document.getElementById('nowSong'); // Updated to nowSong
+      els.nowSong = document.getElementById('nowSong');
       els.brand = document.getElementById('brand');
       state.audio = els.audio;
 
@@ -283,9 +283,8 @@
       els.audio.addEventListener('pause', () => updatePlayIcon(false));
       els.audio.addEventListener('volumechange', updateMuteIcon);
       els.audio.addEventListener('error', onAudioError);
-      els.audio.addEventListener('timeupdate', updateCurrentSongInfo); // Listen for timeupdate to get song info
+      els.audio.addEventListener('timeupdate', updateCurrentSongInfo);
       els.audio.addEventListener('loadedmetadata', updateCurrentSongInfo);
-
 
       restoreVolume();
       restoreLastSession();
@@ -368,7 +367,6 @@
 
     function onRouteChange() {
       const parts = getHashParts();
-      // Scroll to top on route change
       window.scrollTo(0, 0);
 
       // Clear search input and filter state when navigating to a new page (or home)
@@ -388,7 +386,7 @@
         state.currentRoute = 'p';
         state.currentSlug = slug;
         renderPlaylist(slug);
-        setSearchPlaceholder('Search stations in this playlist…');
+        setSearchPlaceholder('Search streams in this playlist…'); /* Changed placeholder text */
         return;
       }
       state.currentRoute = '';
@@ -454,8 +452,8 @@
         card.href = `#/p/${p.slug}`;
         card.innerHTML = `
           <span class="title">${escapeHtml(p.name)}</span>
-          <span class="meta">${p.count ?? '—'} items</span>
-          <span class="small">Endpoint: ${escapeHtml(shortenPath(p.url))}</span>
+          <span class="meta">${p.count ?? '—'} streams</span> <!-- Changed 'items' to 'streams' -->
+          <!-- Removed endpoint link -->
         `;
         grid.appendChild(card);
       }
@@ -512,7 +510,7 @@
       header.className = 'row';
       header.innerHTML = `
         <div class="section-title">${escapeHtml(name)}</div>
-        <div class="small">Items: ${filtered.length} ${q ? `(filtered)` : `of ${count}`}</div>
+        <div class="small">Streams: ${filtered.length} ${q ? `(filtered)` : `of ${count}`}</div> <!-- Changed 'Items' to 'Streams' -->
       `;
       frag.appendChild(header);
 
@@ -529,7 +527,7 @@
       if (!filtered.length) {
         const empty = document.createElement('div');
         empty.className = 'empty';
-        empty.textContent = `No stations match “${state.filter}”.`;
+        empty.textContent = `No streams match “${state.filter}”.`; /* Changed 'stations' to 'streams' */
         frag.appendChild(empty);
         els.app.replaceChildren(frag);
         return;
@@ -612,8 +610,6 @@
       els.playerBar.hidden = false;
 
       persistSession();
-      // Ensure timeupdate listener is active to pick up song changes
-      // And call update once manually in case metadata is immediate.
       updateCurrentSongInfo();
     }
 
@@ -666,19 +662,16 @@
     }
     function onAudioError() {
       console.warn('Audio error', els.audio.error);
-      els.nowSong.textContent = ''; // Leave empty on error
+      els.nowSong.textContent = '';
     }
 
-    // Updated function to show metadata or leave empty
     function updateCurrentSongInfo() {
       let songInfo = '';
 
-      // Attempt to get metadata from text tracks (e.g., Shoutcast/Icecast metadata)
       if (els.audio.textTracks && els.audio.textTracks.length > 0) {
         const track = Array.from(els.audio.textTracks).find(t => t.kind === 'metadata');
         if (track) {
-          // Clear previous cuechange listeners to avoid multiple updates if track changes
-          track.oncuechange = null;
+          track.oncuechange = null; // Clear previous listeners to prevent multiple
           track.oncuechange = () => {
             if (track.activeCues.length > 0) {
               const cue = track.activeCues[0];
@@ -689,11 +682,11 @@
                 songInfo = cue.text;
               }
             } else {
-              songInfo = ''; // Clear if no active cues
+              songInfo = '';
             }
-            els.nowSong.textContent = songInfo; // Update when cue changes
+            els.nowSong.textContent = songInfo;
           };
-          // Also check immediately in case there's an active cue on loadedmetadata or initial call
+          // Check immediately for existing cues
           if (track.activeCues.length > 0) {
               const cue = track.activeCues[0];
               const match = /StreamTitle='([^;]+)';/.exec(cue.text);
@@ -706,17 +699,14 @@
         }
       }
 
-      // Fallback to Media Session API title if available and not already set
       if (!songInfo && navigator.mediaSession && navigator.mediaSession.metadata && navigator.mediaSession.metadata.title) {
           songInfo = navigator.mediaSession.metadata.title;
       }
 
-      // Fallback to audio element's title attribute if available and not already set
       if (!songInfo && els.audio.title) {
           songInfo = els.audio.title;
       }
 
-      // Update the display, will be empty string if no info found
       els.nowSong.textContent = songInfo;
     }
 
@@ -760,7 +750,7 @@
           els.audio.muted = !!data.muted;
           els.playerBar.hidden = false;
           els.nowStation.textContent = data.station.name || 'Station';
-          els.nowSong.textContent = ''; // Initialize empty
+          els.nowSong.textContent = '';
           els.audio.src = data.station.url;
           updateMuteIcon();
 
