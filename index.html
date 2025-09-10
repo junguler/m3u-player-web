@@ -564,7 +564,7 @@ function schedulePlayWatchdog() {
   state.playWatchdog = setTimeout(() => {
     if (state.playSeq !== seq) return;
     if (!isActuallyPlaying()) {
-      // Skip to next stream if the current one failed to start in 3s
+      // Skip to next stream if the current one failed to start in 5s
       console.warn("Stream did not start within 5s; skipping to next.");
       if (state.currentItems.length > 1) {
         playNext();
@@ -715,7 +715,7 @@ function normalizeTitle(s) {
   if (!s) return "";
   let t = String(s).replace(/\s+/g, " ").trim();
 
-  const bad = /^(offline|unknown|n\/a|no metadata|stream|radio|live)$|^\s*-+\s*$/i;
+  const bad = /^(offline|unknown|n\/a|no metadata|stream|radio|live|loading)$|^\s*-+\s*$/i; // Added 'loading'
   if (bad.test(t)) return "";
 
   t = t.replace(/\s*[-–—|•]+\s*$/g, "").trim();
@@ -731,7 +731,11 @@ function normalizeTitle(s) {
 /* Helper: route metadata fetches via proxy (if configured) */
 function proxyMeta(url) {
   if (!CONFIG.METADATA_PROXY) return url;
-  try { new URL(url); } catch { return url; }
+  try {
+    new URL(url); // Check if URL is valid before proxying
+  } catch {
+    return url;
+  }
   return `${CONFIG.METADATA_PROXY}?u=${encodeURIComponent(url)}`;
 }
 
@@ -749,6 +753,7 @@ function bindTimedMetadata(audio, seq) {
       const cue = track.activeCues[track.activeCues.length - 1];
       let text = "";
       if (cue && typeof cue.text === "string" && cue.text) {
+        // Try to parse common Icecast/Shoutcast StreamTitle format first
         const m = /StreamTitle=['"]([^'"]+)['"]/.exec(cue.text);
         text = m && m[1] ? m[1] : cue.text;
       }
@@ -828,18 +833,19 @@ async function startIcyStreamLoop(url, seq, signal) {
 
       let meta = "";
       try { meta = new TextDecoder("latin1").decode(metaBuf); }
-      catch { try { meta = (new TextDecoder()).decode(metaBuf); } catch {} }
-
+      catch { try { meta = (new TextDecoder()).decode(metaBuf); } catch {} } // Fallback to UTF-8
+      
       const m = /StreamTitle=['"]([^'"]*)['"]/.exec(meta);
       const title = m ? m[1].trim() : "";
       if (title) updateSongTitle(title, 4, seq);
     }
-  } catch {
-    // ignore
+  } catch(e) {
+    if (e.name === 'AbortError') { /* Stream loop aborted, ignore */ }
+    else { console.warn("ICY stream metadata loop failed:", e); }
   }
 }
 
-/* 3) Poll common server endpoints for updates (Icecast/Shoutcast status) */
+/* 3) Poll common server endpoints for updates (Icecast/Shoutcast status, custom JSON) */
 function startStatusPolling(url, seq) {
   if (!url) return;
   const doPoll = async () => {
@@ -900,7 +906,8 @@ function updateTechnicalMetaBaseline(url, item, seq) {
 
 function applyTechMeta(data, seq) {
   if (state.metaSeq !== seq || !data) return;
-  const keys = ["codec","bitrate","sampleRate","channels","genre","server","listeners","stationName","host"];
+  const keys = ["codec","bitrate","sampleRate","channels","genre","server","listeners","stationName","host",
+                "description", "website", "peakListeners", "streamHits", "streamUptime", "streamStartTime"];
   for (const k of keys) {
     const v = data[k];
     if (v == null || v === "" || (typeof v === "number" && isNaN(v))) continue;
@@ -943,6 +950,8 @@ function renderMetaLine() {
   if (typeof m.listeners === "number" && !isNaN(m.listeners)) parts.push(`${m.listeners} listeners`);
   if (m.server) parts.push(m.server);
   if (m.host) parts.push(m.host);
+  if (m.website) parts.push(m.website);
+  if (m.description) parts.push(m.description);
 
   const uniq = [];
   const seen = new Set();
@@ -1012,17 +1021,30 @@ async function fetchJson(url) {
   if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
   return resp.json();
 }
+
+// Modified to use proxyMeta for all external JSON fetches
+async function fetchJsonWithProxy(url, ms = 4500) {
+  const proxiedUrl = proxyMeta(url);
+  const resp = await fetchWithTimeout(proxiedUrl, { headers: { Accept: "application/json" }, mode: "cors", cache: "no-store" }, ms);
+  if (resp && resp.ok) {
+    try { return await resp.json(); } catch(e) { console.warn(`Failed to parse JSON from ${url}:`, e); return null; }
+  }
+  return null;
+}
+
 async function fetchFirstOkJson(list) {
   let lastErr = null;
   for (const u of list) {
     try {
-      const data = await fetchJson(u);
+      // Use direct fetchJson for internal index/playlist JSON, proxy for external if configured
+      const data = (/^https?:\/\//i.test(u) && CONFIG.METADATA_PROXY && !u.startsWith(location.origin)) ? await fetchJsonWithProxy(u) : await fetchJson(u);
       return { url: u, data };
     } catch (e) { lastErr = e; }
   }
   if (lastErr) { lastErr.__lastTried = list[list.length - 1]; throw lastErr; }
   throw new Error("All candidate URLs failed");
 }
+
 
 /* Utils */
 function escapeHtml(s) {
@@ -1078,22 +1100,19 @@ async function fetchWithTimeout(url, init = {}, ms = 4000) {
     const resp = await fetch(url, { ...init, signal: ctrl.signal });
     clearTimeout(timer);
     return resp;
-  } catch {
+  } catch(e) {
+    if (e.name === 'AbortError') console.debug(`Fetch timed out for ${url}`);
+    else console.warn(`Fetch error for ${url}:`, e);
     clearTimeout(timer);
     return null;
   }
 }
-async function fetchJsonTimeout(url, ms = 4500) {
-  const resp = await fetchWithTimeout(url, { headers: { Accept: "application/json" }, mode: "cors", cache: "no-store" }, ms);
-  if (resp && resp.ok) {
-    try { return await resp.json(); } catch { return null; }
-  }
-  return null;
-}
+// Renamed and moved fetchJsonTimeout logic into fetchJsonWithProxy
+// async function fetchJsonTimeout(url, ms = 4500) { ... }
 
 async function probeStreamHeaders(url) {
   if (!url) return null;
-  const headUrl = proxyMeta(url);
+  const headUrl = proxyMeta(url); // Use proxy for HEAD/GET requests
   const req = async method => await fetchWithTimeout(headUrl, {
     method,
     mode: "cors",
@@ -1110,6 +1129,12 @@ async function probeStreamHeaders(url) {
   const ct = h.get("content-type") || h.get("Content-Type") || "";
   data.codec = mapContentTypeToCodec(ct) || "";
   data.server = (h.get("server") || h.get("Server") || "")?.split("/")[0]?.trim() || "";
+  if (data.server === "Icecast" && ct.includes("mpegurl")) {
+    data.codec = "HLS"; // Sometimes Icecast serves HLS but advertises itself as Icecast
+  }
+
+  const icyName = h.get("icy-name") || h.get("Icy-Name");
+  if (icyName) data.stationName = icyName;
 
   const icyGenre = h.get("icy-genre") || h.get("Icy-Genre");
   if (icyGenre) data.genre = icyGenre;
@@ -1136,7 +1161,7 @@ async function probeServerStatus(url) {
   const origin = u.origin;
   const path = u.pathname || "";
 
-  const mk = (p) => proxyMeta(`${origin}${p}`);
+  const mk = (p) => `${origin}${p}`; // Use directly if not proxying, else proxyMeta will wrap it
   const candidates = unique([
     mk(`/status-json.xsl?mount=${encodeURIComponent(path)}`),
     mk(`/status-json.xsl`),
@@ -1146,19 +1171,75 @@ async function probeServerStatus(url) {
     mk(`/stats?sid=2&json=1`),
     mk(`/stats?sid=3&json=1`),
     mk(`/statistics?json=1`),
-    mk(`/json.xsl`)
+    mk(`/json.xsl`),
+    mk(`/radio/json`), // Common for some modern radio platforms
+    mk(`/streaminfo`),  // Another common API endpoint
+    mk(`/api/v1/stream/current`), // Example for some specific APIs
+    mk(path.replace(/\.[a-z0-9]+$/i, '') + '/status.json'), // e.g. /stream.mp3 -> /stream/status.json
   ]);
 
   for (const c of candidates) {
-    const json = await fetchJsonTimeout(c, 4500);
+    const json = await fetchJsonWithProxy(c, 4500); // All status fetches go through proxy
     if (!json) continue;
     const parsed = parseServerStatus(json, u);
     if (parsed) return parsed;
   }
+
+  // Also try to parse HLS manifests if applicable for more metadata (like ID3 tags/stream info)
+  if (guessCodecFromUrl(url) === 'HLS') {
+    const hlsMeta = await probeHlsManifest(url);
+    if (hlsMeta) return hlsMeta;
+  }
+
   return null;
 }
 
+// New function to probe HLS manifest for metadata
+async function probeHlsManifest(hlsUrl) {
+  const proxiedHlsUrl = proxyMeta(hlsUrl);
+  try {
+    const resp = await fetchWithTimeout(proxiedHlsUrl, { cache: 'no-store' }, 5000);
+    if (!resp || !resp.ok) return null;
+    const manifest = await resp.text();
+
+    const data = {};
+    const audioRegex = /TYPE=AUDIO.*URI="([^"]+)"/;
+    const streamInfoRegex = /RESOLUTION=(\d+x\d+).*BANDWIDTH=(\d+)/;
+    const titleRegex = /#EXTINF:\d+,(.*)/; // Basic title extraction if manifest has it
+
+    // Extract Audio-only URI if present (often contains more specific stream metadata)
+    const audioMatch = manifest.match(audioRegex);
+    if (audioMatch && audioMatch[1]) {
+      // You could recursively probe this audio URI for its headers/status if needed
+      // For now, let's just note its presence.
+      data.hlsAudioUri = audioMatch[1];
+    }
+
+    // Extract general stream info if available
+    const streamMatch = manifest.match(streamInfoRegex);
+    if (streamMatch && streamMatch[2]) {
+      const bitrate = Math.round(parseInt(streamMatch[2], 10) / 1000);
+      if (!isNaN(bitrate)) data.bitrate = bitrate;
+    }
+
+    const titleMatch = manifest.match(titleRegex);
+    if (titleMatch && titleMatch[1]) {
+      data.title = titleMatch[1].trim();
+    }
+
+    // For HLS, the codec is usually inferred from the content type, but we can set it explicitly
+    data.codec = data.codec || "HLS";
+
+    return Object.keys(data).length > 0 ? data : null;
+  } catch (e) {
+    console.warn("Failed to probe HLS manifest:", e);
+    return null;
+  }
+}
+
+
 function parseServerStatus(json, u) {
+  // --- Icecast/Shoutcast specific parsing ---
   if (json.icestats) {
     const ic = json.icestats;
     const srcs = Array.isArray(ic.source) ? ic.source : (ic.source ? [ic.source] : []);
@@ -1183,10 +1264,14 @@ function parseServerStatus(json, u) {
     if (src.server_name) out.stationName = src.server_name;
     if (src.server_type) out.codec = out.codec || mapContentTypeToCodec(String(src.server_type));
     if (src.title) out.title = src.title;
+    if (src.description) out.description = src.description; // Added description
+    if (src.url) out.streamUrl = src.url; // Added stream URL from status
+    if (src.stream_start_iso8601) out.streamStartTime = src.stream_start_iso8601; // Added stream start time
 
     return out;
   }
 
+  // --- Shoutcast v1/v2 style parsing (often less structured) ---
   if (json.streams || json.songtitle || json.currentlisteners != null) {
     let src = null;
     if (json.streams) {
@@ -1201,15 +1286,60 @@ function parseServerStatus(json, u) {
     if (src) {
       if (src.bitrate) { const n = parseInt(src.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
       if (src.currentlisteners != null) { const n = parseInt(src.currentlisteners, 10); if (!isNaN(n)) out.listeners = n; }
+      if (src.peaklisteners != null) { const n = parseInt(src.peaklisteners, 10); if (!isNaN(n)) out.peakListeners = n; } // Added peak listeners
       if (src.servergenre) out.genre = src.servergenre;
       if (src.servertitle) out.stationName = src.servertitle;
       if (src.songtitle) out.title = src.songtitle;
       if (src.contenttype) out.codec = mapContentTypeToCodec(String(src.contenttype));
+      if (src.streamhits != null) out.streamHits = src.streamhits; // Added stream hits
+      if (src.streamuptime) out.streamUptime = src.streamuptime; // Added stream uptime
     }
     return out;
+  }
+
+  // --- More generic JSON parsing, looking for common keys ---
+  const findValue = (obj, keys, isNum = false) => {
+    if (!obj) return null;
+    for (const key of keys) {
+      const val = obj[key];
+      if (val != null) {
+        if (isNum) {
+          const n = parseInt(val, 10);
+          return !isNaN(n) ? n : null;
+        }
+        return String(val);
+      }
+    }
+    return null;
+  };
+
+  const out = {};
+  out.title = findValue(json, ['title', 'song', 'current_song', 'now_playing', 'track']);
+  out.artist = findValue(json, ['artist', 'current_artist']);
+  if (!out.title && out.artist && findValue(json, ['album'])) { // Construct title if only artist and album
+      out.title = `${out.artist} - ${findValue(json, ['album'])}`;
+  } else if (!out.title && out.artist && findValue(json, ['song'])) { // Construct title if only artist and song
+      out.title = `${out.artist} - ${findValue(json, ['song'])}`;
+  }
+
+  out.stationName = findValue(json, ['station_name', 'name', 'radio_name', 'stream_name']);
+  out.listeners = findValue(json, ['listeners', 'current_listeners', 'clients'], true);
+  out.bitrate = findValue(json, ['bitrate', 'kbps'], true);
+  out.genre = findValue(json, ['genre', 'categories']);
+  out.server = findValue(json, ['server_software', 'server']);
+  out.codec = mapContentTypeToCodec(findValue(json, ['content_type', 'format'])) || findValue(json, ['codec']);
+  out.description = findValue(json, ['description', 'about']);
+  out.website = findValue(json, ['website', 'homepage', 'url']);
+
+  // If a generic title was found, prioritize it.
+  if (out.title) {
+      // If we found an artist separately, combine them
+      if (out.artist && !out.title.toLowerCase().includes(out.artist.toLowerCase())) {
+          out.title = `${out.artist} - ${out.title}`;
+      }
+      return out;
   }
 
   return null;
 }
 </script>
-</html>
