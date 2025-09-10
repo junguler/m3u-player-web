@@ -22,14 +22,14 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 .section-title{margin:16px 0 10px;font-weight:700;font-size:18px}
 .playlist-meta{color:var(--muted);font-size:13px;margin-bottom:16px}
 /* Wider, denser playlist grid on the home page */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px; padding-bottom: 96px;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit}
 .card:hover{transform:translateY(-1px);border-color:#2b3a50}
 .card .title{display:block;font-weight:600;color:var(--text)}
 .card .meta{color:var(--muted);font-size:13px}
 
 /* Sub-pages station list: two columns (responsive) */
-.stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+.stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none; padding-bottom: 96px;} /* Added padding-bottom here */
 @media (max-width: 640px){ .stations{grid-template-columns:1fr} }
 
 .station{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;cursor:pointer}
