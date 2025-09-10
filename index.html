@@ -1,2144 +1,1215 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>My Radio</title>
-    <meta
-      name="description"
-      content="Simple web player for my M3U radio playlists."
-    />
-    <meta name="theme-color" content="#0b0f14" />
-    <link
-      rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='52' font-size='48'%3E%F0%9F%8E%A7%3C/text%3E%3C/svg%3E"
-    />
-    <style>
-      /* Define CSS variables for theming */
-      :root {
-        --bg: #0b0f14;
-        --bg-soft: #111824;
-        --card: #0f1725;
-        --text: #e6edf3;
-        --muted: #aab6c3;
-        --brand: #5fb1ff;
-        --accent: #86efac;
-        --border: #1f2937;
-      }
-      /* Light theme adaptation */
-      @media (prefers-color-scheme: light) {
-        :root {
-          --bg: #f7f9fc;
-          --bg-soft: #ffffff;
-          --card: #ffffff;
-          --text: #0b0f14;
-          --muted: #4b5563;
-          --brand: #2563eb;
-          --accent: #16a34a;
-          --border: #e5e7eb;
-        }
-      }
-      /* Reset box-sizing */
-      * {
-        box-sizing: border-box;
-      }
-      /* Full height for html and body */
-      html,
-      body {
-        height: 100%;
-      }
-      /* Body styles */
-      body {
-        margin: 0;
-        font: 16px / 1.4
-          system-ui,
-          -apple-system,
-          Segoe UI,
-          Roboto,
-          Ubuntu,
-          Cantarell,
-          "helvetica neue",
-          Noto Sans,
-          Arial,
-          "apple color emoji",
-          "segoe ui emoji";
-        color: var(--text);
-        background: var(--bg);
-      }
-      /* Top bar styles */
-      .topbar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        z-index: 10;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 16px;
-        background: var(--bg-soft);
-        border-bottom: 1px solid var(--border);
-        backdrop-filter: saturate(1.2) blur(6px);
-      }
-      /* Brand text styles */
-      .brand {
-        font-weight: 700;
-        letter-spacing: 0.2px;
-        color: var(--brand);
-        user-select: none;
-        text-decoration: none;
-      }
-      /* Search input styles */
-      #searchInput {
-        flex: 1;
-        appearance: none;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        border-radius: 10px;
-        padding: 10px 12px;
-        outline: none;
-      }
-      /* Search input placeholder styles */
-      #searchInput::placeholder {
-        color: var(--muted);
-      }
-      /* Main app content area */
-      #app {
-        max-width: 1100px;
-        margin: 70px auto 96px;
-        padding: 0 16px;
-      }
-      /* Loading, empty, error messages */
-      .loading,
-      .empty,
-      .error {
-        color: var(--muted);
-        text-align: center;
-        padding: 24px 12px;
-      }
-      /* Section title styles */
-      .section-title {
-        margin: 16px 0 10px;
-        font-weight: 700;
-        font-size: 18px;
-      }
-      /* Playlist meta info */
-      .playlist-meta {
-        color: var(--muted);
-        font-size: 13px;
-        margin-bottom: 16px;
-      }
-      /* Grid layout for cards */
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 12px;
-      }
-      /* Card styles */
-      .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 14px;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        transition: transform 0.08s ease, border-color 0.08s ease;
-        text-decoration: none;
-        color: inherit;
-      }
-      /* Card hover effect */
-      .card:hover {
-        transform: translateY(-1px);
-        border-color: #2b3a50;
-      }
-      /* Card title */
-      .card .title {
-        display: block;
-        font-weight: 600;
-        color: var(--text);
-      }
-      /* Card meta info */
-      .card .meta {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      /* Stations list */
-      .stations {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 8px;
-        margin: 0;
-        padding: 0;
-        list-style: none;
-      }
-      /* Individual station item */
-      .station {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 10px 12px;
-        display: grid;
-        grid-template-columns: auto 1fr auto;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-      }
-      /* Play button within station */
-      .station .play {
-        font-size: 18px;
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: #111c2a;
-        color: var(--text);
-        cursor: pointer;
-      }
-      /* Station name */
-      .station .name {
-        font-weight: 600;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      /* Station actions container */
-      .station .actions {
-        display: flex;
-        gap: 6px;
-      }
-      /* Open stream button */
-      .station .open {
-        border: 1px solid var(--border);
-        background: 0 0;
-        color: var(--muted);
-        padding: 6px 10px;
-        border-radius: 8px;
-        cursor: pointer;
-      }
-      /* Active station highlight */
-      .station.active {
-        outline: 2px solid var(--brand);
-      }
-      /* Audio player bar */
-      .player {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: grid;
-        grid-template-columns: auto auto auto auto 1fr auto;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        border-top: 1px solid var(--border);
-        background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 6%)),
-          var(--bg-soft);
-        backdrop-filter: saturate(1.2) blur(6px);
-      }
-      /* Player buttons */
-      .player button {
-        height: 40px;
-        width: 40px;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: #111c2a;
-        color: var(--text);
-        cursor: pointer;
-      }
-      /* Now playing info container */
-      .player .now {
-        min-width: 0;
-      }
-      /* Now playing station name */
-      .now-station {
-        font-weight: 700;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      /* Now playing song title */
-      .now-song {
-        color: var(--muted);
-        font-size: 13px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      /* Now playing meta info */
-      .now-meta {
-        color: var(--muted);
-        font-size: 12px;
-        opacity: 0.9;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      /* Volume controls container */
-      .volume {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      /* Volume percentage display */
-      .volume-percentage {
-        font-size: 13px;
-        color: var(--muted);
-        min-width: 4ch;
-        text-align: right;
-      }
-      /* Volume range input width */
-      #volumeRange {
-        width: 100px;
-      }
-      /* Generic row styling */
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-      /* Small text styling */
-      .small {
-        color: var(--muted);
-        font-size: 13px;
-      }
-      /* Link styling */
-      a.link {
-        color: var(--brand);
-        text-decoration: none;
-      }
-      a.link:hover {
-        text-decoration: underline;
-      }
-    </style>
-    <!-- Message for users with JavaScript disabled -->
-    <noscript>This site needs JavaScript to load your playlists.</noscript>
-  </head>
-  <body>
-    <!-- Top navigation bar -->
-    <header class="topbar">
-      <!-- Brand logo/name, links to home -->
-      <a class="brand" id="brand" href="#/">🎧 My Radio</a>
-      <!-- Search input field -->
-      <input
-        type="search"
-        id="searchInput"
-        placeholder="Search…"
-        autocomplete="off"
-      />
-    </header>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Radio</title>
+<meta name="description" content="Simple web player for my M3U radio playlists.">
+<meta name="theme-color" content="#0b0f14">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='52' font-size='48'%3E%F0%9F%8E%A7%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#0b0f14;--bg-soft:#111824;--card:#0f1725;--text:#e6edf3;--muted:#aab6c3;--brand:#5fb1ff;--accent:#86efac;--border:#1f2937}
+@media(prefers-color-scheme:light){:root{--bg:#f7f9fc;--bg-soft:#ffffff;--card:#ffffff;--text:#0b0f14;--muted:#4b5563;--brand:#2563eb;--accent:#16a34a;--border:#e5e7eb}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,helvetica neue,Noto Sans,Arial,apple color emoji,segoe ui emoji;color:var(--text);background:var(--bg)}
+.topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-soft);border-bottom:1px solid var(--border);backdrop-filter:saturate(1.2) blur(6px)}
+.brand{font-weight:700;letter-spacing:.2px;color:var(--brand);user-select:none;text-decoration:none}
+#searchInput{flex:1;appearance:none;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;outline:none}
+#searchInput::placeholder{color:var(--muted)}
+/* Wider main container to reduce left/right empty space */
+#app{max-width:1600px;margin:70px auto 96px;padding:0 12px}
+.loading,.empty,.error{color:var(--muted);text-align:center;padding:24px 12px}
+.section-title{margin:16px 0 10px;font-weight:700;font-size:18px}
+.playlist-meta{color:var(--muted);font-size:13px;margin-bottom:16px}
+/* Wider, denser playlist grid on the home page */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit}
+.card:hover{transform:translateY(-1px);border-color:#2b3a50}
+.card .title{display:block;font-weight:600;color:var(--text)}
+.card .meta{color:var(--muted);font-size:13px}
 
-    <!-- Main application content area -->
-    <main id="app">
-      <!-- Initial loading message -->
-      <div class="loading" id="appLoading">Loading…</div>
-    </main>
+/* Sub-pages station list: two columns (responsive) */
+.stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none}
+@media (max-width: 640px){ .stations{grid-template-columns:1fr} }
 
-    <!-- Audio player bar, hidden by default -->
-    <footer class="player" id="playerBar" aria-label="Audio player" hidden>
-      <!-- Playback control buttons -->
-      <button id="prevBtn" title="Previous">⏮️</button>
-      <button id="playPauseBtn" title="Play/Pause">▶️</button>
-      <button id="nextBtn" title="Next">⏭️</button>
-      <button id="shuffleBtn" title="Shuffle">🔀</button>
+.station{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;cursor:pointer}
+.station .play{font-size:18px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.station .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.station .actions{display:flex;gap:6px}
+.station .open{border:1px solid var(--border);background:0 0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer}
+.station.active{outline:2px solid var(--brand)}
 
-      <!-- Now playing information -->
-      <div class="now">
-        <div id="nowStation" class="now-station">No station selected</div>
-        <div id="nowSong" class="now-song"></div>
-        <div id="nowMeta" class="now-meta"></div>
+.player{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:auto auto auto auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--border);background:linear-gradient(180deg,transparent,rgba(0,0,0,6%)),var(--bg-soft);backdrop-filter:saturate(1.2) blur(6px)}
+.player button{height:40px;width:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.player .now{min-width:0}
+.now-station{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now-song{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.now-meta{color:var(--muted);font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Use only one compact metadata line under the station title */
+.now-meta{display:none}
+
+.volume{display:flex;align-items:center;gap:8px}
+.volume-percentage{font-size:13px;color:var(--muted);min-width:4ch;text-align:right}
+#volumeRange{width:100px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.small{color:var(--muted);font-size:13px}
+a.link{color:var(--brand);text-decoration:none}
+a.link:hover{text-decoration:underline}
+</style>
+<noscript>This site needs JavaScript to load your playlists.</noscript>
+
+<header class="topbar">
+  <a class="brand" id="brand" href="#/">🎧 My Radio</a>
+  <input type="search" id="searchInput" placeholder="Search…" autocomplete="off">
+</header>
+
+<main id="app">
+  <div class="loading" id="appLoading">Loading…</div>
+</main>
+
+<footer class="player" id="playerBar" aria-label="Audio player" hidden>
+  <button id="prevBtn" title="Previous">⏮️</button>
+  <button id="playPauseBtn" title="Play/Pause">▶️</button>
+  <button id="nextBtn" title="Next">⏭️</button>
+  <button id="shuffleBtn" title="Shuffle">🔀</button>
+  <div class="now">
+    <div id="nowStation" class="now-station">No station selected</div>
+    <div id="nowSong" class="now-song"></div>
+    <div id="nowMeta" class="now-meta"></div>
+  </div>
+  <div class="volume">
+    <button id="muteBtn" title="Mute/Unmute">🔊</button>
+    <button id="volDownBtn" title="Volume Down">-</button>
+    <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1">
+    <button id="volUpBtn" title="Volume Up">+</button>
+    <span id="volumePercentage" class="volume-percentage">100%</span>
+  </div>
+  <audio id="audio" preload="none" crossorigin="anonymous"></audio>
+</footer>
+
+<script>
+"use strict";
+
+/* Config
+   If your streams block cross-origin metadata (most do), deploy a tiny CORS proxy
+   (e.g., a Cloudflare Worker) and set METADATA_PROXY to its URL. Only metadata
+   fetches go through the proxy; audio playback stays direct.
+
+   Example Worker (deploy this separately and set METADATA_PROXY to its URL):
+   -------------------------------------------------------------------------
+   export default {
+     async fetch(request) {
+       const url = new URL(request.url);
+       const target = url.searchParams.get("u");
+       if (!target) return new Response("Missing ?u=", { status: 400 });
+
+       const upstream = await fetch(target, {
+         method: request.method,
+         headers: {
+           "Icy-MetaData": "1",
+           ...(request.headers.get("Range") ? { Range: request.headers.get("Range") } : {}),
+         },
+         redirect: "follow",
+       });
+
+       const hdr = new Headers(upstream.headers);
+       hdr.set("access-control-allow-origin", "*");
+       hdr.set("access-control-expose-headers", "*");
+       hdr.set("cache-control", "no-store");
+
+       return new Response(upstream.body, {
+         status: upstream.status,
+         statusText: upstream.statusText,
+         headers: hdr,
+       });
+     }
+   };
+*/
+const CONFIG = {
+  API_INDEX_URL: "https://junguler.github.io/m3u-rest-api/api/index.json",
+  SITE_TITLE: "My Radio",
+  METADATA_PROXY: "" // e.g. "https://your-worker.example.workers.dev/"
+};
+
+/* DOM and State */
+const els = {};
+const state = {
+  index: null,
+  indexBase: null,
+  indexDir: null,
+  repoRoot: null,
+  playlistMap: new Map(),
+  currentRoute: null,
+  currentSlug: null,
+  currentPlaylist: null,
+  currentPlaylistUrl: null,
+  currentItems: [],
+  currentIndex: -1,
+  audio: null,
+  audioContext: null,
+  audioSource: null,
+  compressor: null,
+  filter: "",
+  // Robust "now playing" state
+  currentSong: "",
+  songPriority: 0, // higher wins
+  streamMeta: {},
+  metaSeq: 0,       // session guard for async watchers
+  npAbort: null,    // AbortController for ICY loop
+  npStatusTimer: null,
+  npMSessionTimer: null,
+  // Playback watchdog to skip stalled streams
+  playSeq: 0,
+  playWatchdog: null
+};
+
+/* Boot */
+document.addEventListener("DOMContentLoaded", init);
+function init() {
+  cacheDom();
+  wireUI();
+  boot();
+}
+
+function cacheDom() {
+  els.app = document.getElementById("app");
+  els.appLoading = document.getElementById("appLoading");
+  els.searchInput = document.getElementById("searchInput");
+  els.playerBar = document.getElementById("playerBar");
+  els.audio = document.getElementById("audio");
+  els.playPauseBtn = document.getElementById("playPauseBtn");
+  els.prevBtn = document.getElementById("prevBtn");
+  els.nextBtn = document.getElementById("nextBtn");
+  els.shuffleBtn = document.getElementById("shuffleBtn");
+  els.muteBtn = document.getElementById("muteBtn");
+  els.volumeRange = document.getElementById("volumeRange");
+  els.volumePercentage = document.getElementById("volumePercentage");
+  els.volUpBtn = document.getElementById("volUpBtn");
+  els.volDownBtn = document.getElementById("volDownBtn");
+  els.nowStation = document.getElementById("nowStation");
+  els.nowSong = document.getElementById("nowSong");
+  els.nowMeta = document.getElementById("nowMeta");
+  els.brand = document.getElementById("brand");
+  state.audio = els.audio;
+  updateBrandText();
+  updateTitle();
+}
+
+function wireUI() {
+  window.addEventListener("hashchange", onRouteChange);
+  els.searchInput.addEventListener("input", debounce(onSearch, 120));
+
+  els.playPauseBtn.addEventListener("click", togglePlayPause);
+  els.prevBtn.addEventListener("click", playPrev);
+  els.nextBtn.addEventListener("click", playNext);
+  els.shuffleBtn.addEventListener("click", shuffle);
+
+  els.muteBtn.addEventListener("click", toggleMute);
+  els.volumeRange.addEventListener("input", () => setVolume(parseFloat(els.volumeRange.value)));
+  els.volUpBtn.addEventListener("click", volumeUp);
+  els.volDownBtn.addEventListener("click", volumeDown);
+
+  els.audio.addEventListener("playing", () => { updatePlayIcon(true); clearPlayWatchdog(); });
+  els.audio.addEventListener("canplay", clearPlayWatchdog);
+  els.audio.addEventListener("canplaythrough", clearPlayWatchdog);
+  els.audio.addEventListener("pause", () => updatePlayIcon(false));
+  els.audio.addEventListener("volumechange", updateVolumeDisplay);
+  els.audio.addEventListener("error", onAudioError);
+
+  restoreVolume();
+}
+
+async function boot() {
+  try {
+    showLoading(true);
+    state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
+    state.indexDir = new URL(".", state.indexBase.href);
+    state.repoRoot = new URL("..", state.indexBase.href);
+
+    const index = await fetchJson(state.indexBase.href);
+    state.index = index;
+    buildPlaylistMap(index);
+    location.hash !== "#/" ? onRouteChange() : location.hash = "#/";
+  } catch (err) {
+    showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
+  } finally {
+    showLoading(false);
+  }
+}
+
+/* UI helpers */
+function showLoading(v) {
+  els.appLoading && els.appLoading.classList.toggle("loading", !!v);
+  if (v) els.app.innerHTML = `<div class="loading">Loading…</div>`;
+}
+function showError(msg) {
+  els.app.innerHTML = `<div class="error">${escapeHtml(msg)}</div>`;
+}
+function buildPlaylistMap(index) {
+  state.playlistMap.clear();
+  const list = Array.isArray(index.playlists) ? index.playlists : [];
+  for (const p of list) {
+    const slug = slugFromPlaylist(p);
+    const url = resolvePlaylistUrl(p.url);
+    state.playlistMap.set(slug, { name: p.name || slug, url, count: p.count ?? null, raw: p });
+  }
+}
+function slugFromPlaylist(p) {
+  if (p && p.url) try {
+    const file = p.url.split("/").pop() || "";
+    if (file) return file.replace(/\.json(\?.*)?$/i, "").toLowerCase();
+  } catch(e) { console.warn("Failed to parse slug from playlist URL:", e); }
+  return slugify(p?.name || "");
+}
+function slugify(s) {
+  return String(s).trim().toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+function resolvePlaylistUrl(u) {
+  if (!u) return "";
+  return /^https?:\/\//i.test(u) ? dedupeApi(u)
+       : /^\/\//.test(u) ? dedupeApi(location.protocol + u)
+       : u.startsWith("/") ? dedupeApi(new URL(u.replace(/^\//,""), state.repoRoot).href)
+       : dedupeApi(u.startsWith("api/") ? new URL(u, state.repoRoot).href : new URL(u, state.indexDir).href);
+}
+function dedupeApi(u) { return u.replace(/(?:\/api)+(\/)/g, "/api$1"); }
+
+function onRouteChange() {
+  const parts = getHashParts();
+  window.scrollTo(0, 0);
+  els.searchInput.value = "";
+  state.filter = "";
+
+  if (parts.length === 0) {
+    state.currentRoute = "";
+    state.currentSlug = null;
+    renderHome();
+    updateTitle();
+    setSearchPlaceholder("Search playlists…");
+    updateBrandText("home");
+    return;
+  }
+
+  if (parts[0] === "p" && parts[1]) {
+    const slug = parts[1].toLowerCase();
+    state.currentRoute = "p";
+    state.currentSlug = slug;
+    renderPlaylist(slug);
+    setSearchPlaceholder("Search streams in this playlist…");
+    updateBrandText("back");
+    return;
+  }
+
+  state.currentRoute = "";
+  state.currentSlug = null;
+  renderHome();
+  updateBrandText("home");
+}
+
+function getHashParts() {
+  const h = (location.hash || "").replace(/^#/,"");
+  return h.split("/").filter(Boolean);
+}
+function updateTitle(t) {
+  document.title = t ? `${t} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
+}
+function updateBrandText(mode="home") {
+  if (!els.brand) return;
+  mode === "back" ? els.brand.innerHTML = `&larr; Go Back` : els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+}
+function setSearchPlaceholder(p) {
+  els.searchInput.placeholder = p;
+}
+function onSearch(e) {
+  state.filter = e.target.value.trim().toLowerCase();
+  if (state.currentRoute === "p" && state.currentPlaylist) renderPlaylistContent(state.currentPlaylist, true);
+  else renderHome(true);
+}
+
+/* Renderers */
+function renderHome(skipTitle=false) {
+  if (!state.index) { els.app.innerHTML = `<div class="loading">Loading…</div>`; return; }
+
+  const q = state.filter;
+  const all = [...state.playlistMap.entries()].map(([slug, data]) => ({ slug, ...data }));
+  const visible = q ? all.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : all;
+
+  if (!skipTitle) updateTitle();
+
+  if (!visible.length) {
+    els.app.innerHTML = `
+      <div class="section-title">Playlists</div>
+      <div class="empty">No playlists match “${escapeHtml(q)}”.</div>
+    `;
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  const title = document.createElement("div");
+  title.className = "section-title";
+  title.textContent = `Playlists ${q ? `(filtered)` : ""}`;
+  frag.appendChild(title);
+
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  for (const p of visible) {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = `#/p/${p.slug}`;
+    a.innerHTML = `
+      <span class="title">${escapeHtml(p.name)}</span>
+      <span class="meta">${p.count ?? "—"} streams</span>
+    `;
+    grid.appendChild(a);
+  }
+  frag.appendChild(grid);
+  els.app.replaceChildren(frag);
+}
+
+async function renderPlaylist(slug) {
+  const known = state.playlistMap.get(slug);
+  const fallback = known?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
+  const candidates = unique([
+    fallback,
+    resolvePlaylistUrl(`playlists/${slug}.json`),
+    resolvePlaylistUrl(`api/playlists/${slug}.json`)
+  ]);
+  const name = known?.name || slug;
+
+  updateTitle(name);
+  els.app.innerHTML = `<div class="loading">Loading “${escapeHtml(name)}”…</div>`;
+
+  try {
+    const { url, data } = await fetchFirstOkJson(candidates);
+    state.currentPlaylist = data;
+    state.currentPlaylistUrl = url;
+    state.currentItems = Array.isArray(data.items) ? data.items : [];
+    renderPlaylistContent(data);
+  } catch (err) {
+    const last = err?.__lastTried || candidates[candidates.length - 1] || fallback;
+    console.error("Playlist fetch failed:", last, err);
+    els.app.innerHTML = `
+      <div class="error">
+        Failed to load playlist: ${escapeHtml(err.message || err)}<br/>
+        Tried URL: <a class="link" href="${escapeHtml(last)}" target="_blank" rel="noopener">${escapeHtml(last)}</a>
       </div>
+    `;
+  }
+}
 
-      <!-- Volume controls -->
-      <div class="volume">
-        <button id="muteBtn" title="Mute/Unmute">🔊</button>
-        <button id="volDownBtn" title="Volume Down">-</button>
-        <input
-          id="volumeRange"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value="1"
-        />
-        <button id="volUpBtn" title="Volume Up">+</button>
-        <span id="volumePercentage" class="volume-percentage">100%</span>
-      </div>
+function renderPlaylistContent(pl, skipTitle=false) {
+  const title = pl.name || state.currentSlug || "Playlist";
+  const total = pl.count ?? (pl.items?.length || 0);
+  if (!skipTitle) updateTitle(title);
 
-      <!-- Actual audio element -->
-      <audio id="audio" preload="none" crossorigin="anonymous"></audio>
-    </footer>
+  const q = state.filter;
+  const items = state.currentItems || [];
+  const visible = q ? items.filter(it => (it.name || "").toLowerCase().includes(q)) : items;
 
-    <script>
-      "use strict"; // Enforce strict mode
+  const frag = document.createDocumentFragment();
 
-      // Configuration object for API URL and site title
-      const CONFIG = {
-        API_INDEX_URL:
-          "https://junguler.github.io/m3u-rest-api/api/index.json",
-        SITE_TITLE: "My Radio",
-      };
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML = `
+    <div class="section-title">${escapeHtml(title)}</div>
+    <div class="small">Streams: ${visible.length} ${q ? `(filtered)` : `of ${total}`}</div>
+  `;
+  frag.appendChild(row);
 
-      // Object to store DOM elements for easy access
-      const els = {};
+  if (state.currentPlaylistUrl || pl.sourceFile || pl.generatedAt) {
+    const meta = document.createElement("div");
+    meta.className = "playlist-meta";
+    const parts = [];
+    if (state.currentPlaylistUrl) {
+      const url = escapeHtml(state.currentPlaylistUrl);
+      parts.push(`Source: <a class="link" href="${url}" target="_blank" rel="noopener">${url}</a>`);
+    } else if (pl.sourceFile) {
+      parts.push(`Source: ${escapeHtml(pl.sourceFile)}`);
+    }
+    if (pl.generatedAt) parts.push(`Updated: ${escapeHtml(toLocalTime(pl.generatedAt))}`);
+    meta.innerHTML = parts.join(" • ");
+    frag.appendChild(meta);
+  }
 
-      // State object to manage application data
-      const state = {
-        index: null, // Stores the main index data
-        indexBase: null, // Base URL for the index
-        indexDir: null, // Directory URL of the index
-        repoRoot: null, // Root URL of the repository
-        playlistMap: new Map(), // Map of slug to playlist data
-        currentRoute: null, // Current route (e.g., "p" for playlist)
-        currentSlug: null, // Slug of the current playlist
-        currentPlaylist: null, // Full data of the current playlist
-        currentPlaylistUrl: null, // URL from which the current playlist was loaded
-        currentItems: [], // List of stream items in the current playlist
-        currentIndex: -1, // Index of the currently playing stream
-        audio: null, // Reference to the audio element
-        audioContext: null, // Web Audio API context for normalization
-        audioSource: null, // MediaElementSourceNode for audio element
-        compressor: null, // DynamicsCompressorNode for audio normalization
-        filter: "", // Current search filter string
-        currentSong: "", // Currently playing song title
-        streamMeta: {}, // Metadata for the current stream
-      };
+  if (!visible.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = `No streams match “${state.filter}”.`;
+    frag.appendChild(empty);
+    els.app.replaceChildren(frag);
+    return;
+  }
 
-      // Event listener for DOM content loaded
-      document.addEventListener("DOMContentLoaded", init);
+  const ul = document.createElement("ul");
+  ul.className = "stations";
+  visible.forEach(item => {
+    const li = document.createElement("li");
+    li.className = "station";
+    const isActive = state.currentIndex >= 0 && state.currentItems[state.currentIndex] === item;
+    if (isActive) li.classList.add("active");
 
-      /**
-       * Initializes the application.
-       * Caches DOM elements, wires up UI events, and boots the application.
-       */
-      function init() {
-        cacheDom();
-        wireUI();
-        boot();
+    const btn = document.createElement("button");
+    btn.className = "play";
+    btn.title = "Play";
+    btn.textContent = "▶️";
+    btn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      const idx = state.currentItems.findIndex(x => x === item || x.url === item.url);
+      if (idx !== -1) playFromList(state.currentItems, idx);
+    });
+
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = item.name || "(Unnamed)";
+
+    const actions = document.createElement("div");
+    actions.className = "actions";
+    const open = document.createElement("button");
+    open.className = "open";
+    open.innerHTML = "↗";
+    open.title = "Open stream URL in new tab";
+    open.addEventListener("click", ev => {
+      ev.stopPropagation();
+      item.url && window.open(item.url, "_blank", "noopener");
+    });
+    actions.appendChild(open);
+
+    li.appendChild(btn);
+    li.appendChild(name);
+    li.appendChild(actions);
+
+    li.addEventListener("click", () => {
+      const idx = state.currentItems.findIndex(x => x === item || x.url === item.url);
+      if (idx !== -1) playFromList(state.currentItems, idx);
+    });
+
+    ul.appendChild(li);
+  });
+
+  frag.appendChild(ul);
+  els.app.replaceChildren(frag);
+  refreshActiveStationHighlight();
+}
+
+/* Playback */
+function playFromList(list, idx) {
+  const item = list[idx];
+  if (!item) return;
+  state.currentIndex = idx;
+  setNowPlaying(item);
+  loadAndPlay(item.url);
+  refreshActiveStationHighlight();
+}
+
+function setNowPlaying(item) {
+  els.nowStation.textContent = item?.name || "Unknown Station";
+  els.nowSong.textContent = "";
+  if (els.nowMeta) els.nowMeta.textContent = "";
+
+  state.currentSong = "";
+  state.songPriority = 0;
+  state.streamMeta = {};
+  els.playerBar.hidden = false;
+
+  persistSession();
+
+  // Start robust "Now Playing" pipeline for this stream
+  startNowPlayingPipeline(item);
+}
+
+function setupAudioNormalization() {
+  if (state.audioContext) return;
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    state.audioContext = new Ctx();
+    state.audioSource = state.audioContext.createMediaElementSource(els.audio);
+    state.compressor = state.audioContext.createDynamicsCompressor();
+    state.compressor.threshold.setValueAtTime(-50, state.audioContext.currentTime);
+    state.compressor.knee.setValueAtTime(40, state.audioContext.currentTime);
+    state.compressor.ratio.setValueAtTime(12, state.audioContext.currentTime);
+    state.compressor.attack.setValueAtTime(0, state.audioContext.currentTime);
+    state.compressor.release.setValueAtTime(.25, state.audioContext.currentTime);
+    state.audioSource.connect(state.compressor);
+    state.compressor.connect(state.audioContext.destination);
+  } catch (e) {
+    console.error("Failed to initialize Web Audio API for normalization:", e);
+  }
+}
+
+function playAudio() {
+  if (!els.audio.src) return;
+  state.audioContext || setupAudioNormalization();
+  if (state.audioContext && state.audioContext.state === "suspended") {
+    state.audioContext.resume().catch(e => console.error("Audio context resume failed:", e));
+  }
+  els.audio.play().catch(e => {
+    if (e.name !== "AbortError") console.warn("Audio play failed:", e);
+  });
+}
+function pauseAudio() { els.audio.pause(); }
+
+function isActuallyPlaying() {
+  const a = els.audio;
+  if (!a) return false;
+  return !a.paused && !a.ended && (a.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA || a.currentTime > 0);
+}
+function clearPlayWatchdog() {
+  if (state.playWatchdog) {
+    clearTimeout(state.playWatchdog);
+    state.playWatchdog = null;
+  }
+}
+function schedulePlayWatchdog() {
+  clearPlayWatchdog();
+  const seq = ++state.playSeq;
+  state.playWatchdog = setTimeout(() => {
+    if (state.playSeq !== seq) return;
+    if (!isActuallyPlaying()) {
+      // Skip to next stream if the current one failed to start in 3s
+      console.warn("Stream did not start within 3s; skipping to next.");
+      if (state.currentItems.length > 1) {
+        playNext();
+      } else {
+        updatePlayIcon(false);
       }
+    }
+  }, 3000);
+}
 
-      /**
-       * Caches frequently used DOM elements into the `els` object.
-       */
-      function cacheDom() {
-        els.app = document.getElementById("app");
-        els.appLoading = document.getElementById("appLoading");
-        els.searchInput = document.getElementById("searchInput");
-        els.playerBar = document.getElementById("playerBar");
-        els.audio = document.getElementById("audio");
-        els.playPauseBtn = document.getElementById("playPauseBtn");
-        els.prevBtn = document.getElementById("prevBtn");
-        els.nextBtn = document.getElementById("nextBtn");
-        els.shuffleBtn = document.getElementById("shuffleBtn");
-        els.muteBtn = document.getElementById("muteBtn");
-        els.volumeRange = document.getElementById("volumeRange");
-        els.volumePercentage = document.getElementById("volumePercentage");
-        els.volUpBtn = document.getElementById("volUpBtn");
-        els.volDownBtn = document.getElementById("volDownBtn");
-        els.nowStation = document.getElementById("nowStation");
-        els.nowSong = document.getElementById("nowSong");
-        els.nowMeta = document.getElementById("nowMeta");
-        els.brand = document.getElementById("brand");
+function loadAndPlay(url) {
+  try {
+    els.audio.src = url || "";
+    if (!url) { pauseAudio(); return; }
+    playAudio();
+    schedulePlayWatchdog();
+  } catch (e) {
+    console.error("Audio error:", e);
+  }
+}
 
-        state.audio = els.audio; // Set audio element in state
-        updateBrandText(); // Set initial brand text
-        updateTitle(); // Set initial document title
+function togglePlayPause() {
+  if (!els.audio.src) return;
+  els.audio.paused ? playAudio() : pauseAudio();
+}
+function updatePlayIcon(playing) {
+  els.playPauseBtn.textContent = playing ? "⏸️" : "▶️";
+}
+function playNext() {
+  if (!state.currentItems.length) return;
+  const i = (state.currentIndex + 1) % state.currentItems.length;
+  state.currentIndex = i;
+  const it = state.currentItems[i];
+  setNowPlaying(it);
+  loadAndPlay(it.url);
+  refreshActiveStationHighlight();
+}
+function playPrev() {
+  if (!state.currentItems.length) return;
+  const i = (state.currentIndex - 1 + state.currentItems.length) % state.currentItems.length;
+  state.currentIndex = i;
+  const it = state.currentItems[i];
+  setNowPlaying(it);
+  loadAndPlay(it.url);
+  refreshActiveStationHighlight();
+}
+async function shuffle() {
+  if (state.currentRoute === "p" && state.currentItems.length > 0) {
+    const i = Math.floor(Math.random() * state.currentItems.length);
+    playFromList(state.currentItems, i);
+  } else if (state.playlistMap.size > 0) {
+    const keys = Array.from(state.playlistMap.keys());
+    const k = keys[Math.floor(Math.random() * keys.length)];
+    location.hash = `#/p/${k}`;
+  }
+}
+
+/* Volume */
+function toggleMute() { els.audio.muted = !els.audio.muted; persistVolume(); }
+function updateMuteIcon() {
+  const muted = els.audio.muted || els.audio.volume === 0;
+  els.muteBtn.textContent = muted ? "🔇" : "🔊";
+}
+function updateVolumeDisplay() {
+  els.volumeRange.value = els.audio.volume;
+  els.volumePercentage.textContent = `${Math.round(els.audio.volume * 100)}%`;
+  updateMuteIcon();
+  persistVolume();
+}
+function setVolume(v) { els.audio.volume = Math.max(0, Math.min(1, v)); }
+function volumeUp() { setVolume(els.audio.volume + .1); }
+function volumeDown() { setVolume(els.audio.volume - .1); }
+
+/* Errors */
+function onAudioError() {
+  console.warn("Audio error", els.audio.error);
+  clearPlayWatchdog();
+}
+
+/* ===========================
+   ROBUST NOW-PLAYING PIPELINE
+   ===========================
+
+   Multi-source strategy (highest priority wins):
+   5: Timed metadata (HLS ID3 / Icecast with textTracks)
+   4: ICY stream metadata (continuous fetch with Icy-MetaData: 1)
+   3: Server status endpoints (status-json.xsl, etc.) polled
+   2: MediaSession metadata (if browser updates it)
+   1: <audio> title attribute (fallback)
+*/
+
+function startNowPlayingPipeline(item) {
+  const url = item?.url || "";
+  const seq = ++state.metaSeq;
+
+  // Reset song + tech meta baselines
+  state.currentSong = "";
+  state.songPriority = 0;
+  renderMetaLine();
+
+  // Cleanup previous watchers
+  stopNowPlayingWatchers();
+
+  // Tech meta baseline (codec/bitrate/etc)
+  updateTechnicalMetaBaseline(url, item, seq);
+
+  // 1) Timed metadata via textTracks (ID3 for HLS or ICY in some browsers)
+  bindTimedMetadata(els.audio, seq);
+
+  // 2) Continuous ICY metadata reader (if supported and CORS allows)
+  state.npAbort = new AbortController();
+  startIcyStreamLoop(url, seq, state.npAbort.signal).catch(() => { /* ignore */ });
+
+  // 3) Poll common server status endpoints for song/title updates
+  startStatusPolling(url, seq);
+
+  // 4) Poll MediaSession metadata (low priority)
+  startMediaSessionPolling(seq);
+
+  // 5) Fallback from the audio element's title, once
+  if (els.audio.title) updateSongTitle(els.audio.title, 1, seq);
+}
+
+/* Cleanup all watchers for the previous stream */
+function stopNowPlayingWatchers() {
+  if (state.npAbort) { try { state.npAbort.abort(); } catch {} state.npAbort = null; }
+  if (state.npStatusTimer) { clearInterval(state.npStatusTimer); state.npStatusTimer = null; }
+  if (state.npMSessionTimer) { clearInterval(state.npMSessionTimer); state.npMSessionTimer = null; }
+}
+
+/* Priority-aware, de-duplicated song setter */
+function updateSongTitle(rawTitle, priority, seq) {
+  if (state.metaSeq !== seq) return; // stale
+  const title = normalizeTitle(rawTitle);
+  if (!title) return;
+
+  const changed = title !== state.currentSong;
+  const better = priority > (state.songPriority || 0);
+
+  if (better || (changed && priority >= state.songPriority)) {
+    state.currentSong = title;
+    state.songPriority = priority;
+    renderMetaLine();
+  }
+}
+
+function normalizeTitle(s) {
+  if (!s) return "";
+  let t = String(s).replace(/\s+/g, " ").trim();
+
+  const bad = /^(offline|unknown|n\/a|no metadata|stream|radio|live)$|^\s*-+\s*$/i;
+  if (bad.test(t)) return "";
+
+  t = t.replace(/\s*[-–—|•]+\s*$/g, "").trim();
+
+  if (state.streamMeta.stationName) {
+    const sn = state.streamMeta.stationName.toLowerCase();
+    if (t.toLowerCase() === sn) return "";
+  }
+
+  return t;
+}
+
+/* Helper: route metadata fetches via proxy (if configured) */
+function proxyMeta(url) {
+  if (!CONFIG.METADATA_PROXY) return url;
+  try { new URL(url); } catch { return url; }
+  return `${CONFIG.METADATA_PROXY}?u=${encodeURIComponent(url)}`;
+}
+
+/* 1) Timed metadata from textTracks (HLS ID3 cues, etc.) */
+function bindTimedMetadata(audio, seq) {
+  const tracks = audio.textTracks;
+  if (!tracks) return;
+
+  const attach = (track) => {
+    if (!track || track.kind !== "metadata") return;
+    try { track.mode = "hidden"; } catch {}
+    track.oncuechange = () => {
+      if (state.metaSeq !== seq) return;
+      if (!track.activeCues || track.activeCues.length === 0) return;
+      const cue = track.activeCues[track.activeCues.length - 1];
+      let text = "";
+      if (cue && typeof cue.text === "string" && cue.text) {
+        const m = /StreamTitle=['"]([^'"]+)['"]/.exec(cue.text);
+        text = m && m[1] ? m[1] : cue.text;
       }
+      if (text) updateSongTitle(text, 5, seq);
+    };
+  };
 
-      /**
-       * Wires up event listeners for user interface interactions.
-       */
-      function wireUI() {
-        // Listen for hash changes in the URL (routing)
-        window.addEventListener("hashchange", onRouteChange);
-        // Debounced input for search field
-        els.searchInput.addEventListener("input", debounce(onSearch, 120));
-        // Player controls
-        els.playPauseBtn.addEventListener("click", togglePlayPause);
-        els.prevBtn.addEventListener("click", playPrev);
-        els.nextBtn.addEventListener("click", playNext);
-        els.shuffleBtn.addEventListener("click", shuffle);
-        els.muteBtn.addEventListener("click", toggleMute);
-        // Volume control
-        els.volumeRange.addEventListener("input", () =>
-          setVolume(parseFloat(els.volumeRange.value)),
-        );
-        els.volUpBtn.addEventListener("click", volumeUp);
-        els.volDownBtn.addEventListener("click", volumeDown);
+  for (let i = 0; i < tracks.length; i++) attach(tracks[i]);
+  tracks.addEventListener?.("addtrack", (e) => attach(e.track), { once: false });
+}
 
-        // Audio element events
-        els.audio.addEventListener("playing", () => updatePlayIcon(true));
-        els.audio.addEventListener("pause", () => updatePlayIcon(false));
-        els.audio.addEventListener("volumechange", updateVolumeDisplay);
-        els.audio.addEventListener("error", onAudioError);
-        // Update song info when time updates or metadata is loaded
-        els.audio.addEventListener("timeupdate", updateCurrentSongInfo);
-        els.audio.addEventListener("loadedmetadata", updateCurrentSongInfo);
+/* 2) Continuous ICY metadata loop (reads StreamTitle updates as they change) */
+async function startIcyStreamLoop(url, seq, signal) {
+  if (!url) return;
+  try {
+    const metaUrl = proxyMeta(url);
+    const resp = await fetch(metaUrl, {
+      method: "GET",
+      mode: "cors",
+      cache: "no-store",
+      headers: { "Icy-MetaData": "1" },
+      signal
+    });
+    if (!resp || !resp.ok || !resp.body) return;
+    const metaint = parseInt(resp.headers.get("icy-metaint") || resp.headers.get("Icy-MetaInt") || "", 10);
+    const stationName = resp.headers.get("icy-name") || resp.headers.get("Icy-Name") || "";
+    if (stationName) state.streamMeta.stationName = stationName;
 
-        restoreVolume(); // Restore volume settings from last session
+    if (!metaint || isNaN(metaint)) return;
+
+    const reader = resp.body.getReader();
+    let leftover = new Uint8Array(0);
+
+    const skip = async (len) => {
+      if (leftover.length) {
+        if (leftover.length >= len) { leftover = leftover.subarray(len); return; }
+        len -= leftover.length; leftover = new Uint8Array(0);
       }
-
-      /**
-       * Boots the application by fetching the playlist index and
-       * handling initial routing.
-       */
-      async function boot() {
-        try {
-          showLoading(true); // Show loading indicator
-          // Determine base URLs for API and repository
-          state.indexBase = new URL(CONFIG.API_INDEX_URL, location.href);
-          state.indexDir = new URL(".", state.indexBase.href);
-          state.repoRoot = new URL("..", state.indexBase.href);
-
-          // Fetch the main playlist index
-          const indexData = await fetchJson(state.indexBase.href);
-          state.index = indexData;
-          buildPlaylistMap(indexData); // Build a map for quick playlist lookup
-
-          // Handle initial route based on URL hash
-          if (location.hash !== "#/") {
-            onRouteChange();
-          } else {
-            // Force hashchange event if already on home, to render
-            location.hash = "#/";
-          }
-        } catch (e) {
-          // Display error if index loading fails
-          showError(`Failed to load index: ${escapeHtml(e.message || e)}`);
-        } finally {
-          showLoading(false); // Hide loading indicator
-        }
+      while (len > 0) {
+        const { value, done } = await reader.read();
+        if (done) return;
+        if (!value || !value.length) continue;
+        if (value.length <= len) len -= value.length;
+        else { leftover = value.subarray(len); len = 0; }
       }
-
-      /**
-       * Shows or hides the main loading indicator.
-       * @param {boolean} show - Whether to show (true) or hide (false) the loading indicator.
-       */
-      function showLoading(show) {
-        if (els.appLoading) {
-          els.appLoading.classList.toggle("loading", !!show);
-        }
-        if (show) {
-          // Clear app content and show loading message
-          els.app.innerHTML = `<div class="loading">Loading…</div>`;
-        }
+    };
+    const readExactly = async (len) => {
+      let out = new Uint8Array(len), off = 0;
+      if (leftover.length) {
+        const n = Math.min(len, leftover.length);
+        out.set(leftover.subarray(0, n), 0);
+        off += n; leftover = leftover.subarray(n);
       }
-
-      /**
-       * Displays an error message in the main app area.
-       * @param {string} message - The error message to display.
-       */
-      function showError(message) {
-        els.app.innerHTML = `<div class="error">${escapeHtml(message)}</div>`;
+      while (off < len) {
+        const { value, done } = await reader.read();
+        if (done) return null;
+        if (!value || !value.length) continue;
+        const n = Math.min(len - off, value.length);
+        out.set(value.subarray(0, n), off);
+        off += n;
+        if (n < value.length) leftover = value.subarray(n);
       }
+      return out;
+    };
 
-      /**
-       * Builds the `playlistMap` from the fetched index data.
-       * @param {object} indexData - The index JSON object containing playlist information.
-       */
-      function buildPlaylistMap(indexData) {
-        state.playlistMap.clear();
-        const playlists = Array.isArray(indexData.playlists)
-          ? indexData.playlists
-          : [];
-        for (const p of playlists) {
-          const slug = slugFromPlaylist(p);
-          const url = resolvePlaylistUrl(p.url);
-          state.playlistMap.set(slug, {
-            name: p.name || slug,
-            url: url,
-            count: p.count ?? null,
-            raw: p, // Store raw playlist data if needed
-          });
-        }
+    while (!signal.aborted && state.metaSeq === seq) {
+      await skip(metaint);
+      if (signal.aborted || state.metaSeq !== seq) break;
+
+      const lenByte = await readExactly(1);
+      if (!lenByte) break;
+      const metaLen = lenByte[0] * 16;
+      if (metaLen === 0) continue;
+
+      const metaBuf = await readExactly(metaLen);
+      if (!metaBuf) break;
+
+      let meta = "";
+      try { meta = new TextDecoder("latin1").decode(metaBuf); }
+      catch { try { meta = (new TextDecoder()).decode(metaBuf); } catch {} }
+
+      const m = /StreamTitle=['"]([^'"]*)['"]/.exec(meta);
+      const title = m ? m[1].trim() : "";
+      if (title) updateSongTitle(title, 4, seq);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+/* 3) Poll common server endpoints for updates (Icecast/Shoutcast status) */
+function startStatusPolling(url, seq) {
+  if (!url) return;
+  const doPoll = async () => {
+    if (state.metaSeq !== seq) return;
+    const data = await probeServerStatus(url);
+    if (state.metaSeq !== seq || !data) return;
+    if (data.title) updateSongTitle(data.title, 3, seq);
+    applyTechMeta(data, seq);
+  };
+  doPoll();
+  state.npStatusTimer = setInterval(doPoll, 15000);
+}
+
+/* 4) Poll MediaSession metadata for updates (low priority) */
+function startMediaSessionPolling(seq) {
+  if (!("mediaSession" in navigator)) return;
+  const poll = () => {
+    if (state.metaSeq !== seq) return;
+    const md = navigator.mediaSession.metadata;
+    if (!md) return;
+    const t = md.title || [md.artist, md.album].filter(Boolean).join(" — ");
+    if (t) updateSongTitle(t, 2, seq);
+  };
+  poll();
+  state.npMSessionTimer = setInterval(poll, 5000);
+}
+
+/* Technical metadata (codec/bitrate/etc.) */
+function updateTechnicalMetaBaseline(url, item, seq) {
+  const host = (() => { try { return new URL(url).host; } catch { return ""; } })();
+  const codecFromUrl = guessCodecFromUrl(url);
+  let br = item?.bitrate ?? item?.br ?? item?.["icy-br"] ?? null;
+  if (typeof br === "string") br = parseInt(br, 10);
+  let sr = item?.sampleRate ?? item?.samplerate;
+  let ch = item?.channels;
+
+  state.streamMeta = {
+    host,
+    codec: String(item?.codec || item?.format || codecFromUrl || "").toUpperCase(),
+    bitrate: (typeof br === "number" && !isNaN(br)) ? br : null,
+    sampleRate: (typeof sr === "number" && !isNaN(sr)) ? sr : null,
+    channels: (typeof ch === "number" && !isNaN(ch)) ? ch : null,
+    genre: item?.genre || "",
+    server: "",
+    listeners: null,
+    stationName: item?.name || state.nowStation?.textContent || ""
+  };
+  renderMetaLine();
+
+  probeStreamHeaders(url)
+    .then(d => { if (state.metaSeq === seq && d) applyTechMeta(d, seq); })
+    .finally(() => { if (state.metaSeq === seq) renderMetaLine(); });
+
+  probeServerStatus(url)
+    .then(d => { if (state.metaSeq === seq && d) applyTechMeta(d, seq); })
+    .finally(() => { if (state.metaSeq === seq) renderMetaLine(); });
+}
+
+function applyTechMeta(data, seq) {
+  if (state.metaSeq !== seq || !data) return;
+  const keys = ["codec","bitrate","sampleRate","channels","genre","server","listeners","stationName","host"];
+  for (const k of keys) {
+    const v = data[k];
+    if (v == null || v === "" || (typeof v === "number" && isNaN(v))) continue;
+    state.streamMeta[k] = v;
+  }
+  renderMetaLine();
+}
+
+/* Compact metadata line renderer (song + technicals) */
+function formatSampleRate(sr) {
+  if (typeof sr !== "number" || isNaN(sr) || sr <= 0) return "";
+  if (sr >= 2000) {
+    const khz = Math.round(sr / 100) / 10; // one decimal (e.g., 44100 -> 44.1)
+    return `${khz} kHz`;
+  }
+  return `${sr} Hz`;
+}
+
+function renderMetaLine() {
+  if (!els.nowSong) return;
+  const m = state.streamMeta || {};
+  const parts = [];
+
+  if (state.currentSong && state.currentSong.trim()) parts.push(state.currentSong.trim());
+
+  const codec = (m.codec || "").trim();
+  const br = (typeof m.bitrate === "number" && !isNaN(m.bitrate)) ? `${m.bitrate} kbps` : "";
+  if (codec && br) parts.push(`${codec} ${br}`);
+  else if (codec) parts.push(codec);
+  else if (br) parts.push(br);
+
+  const sr = formatSampleRate(m.sampleRate);
+  if (sr) parts.push(sr);
+
+  if (typeof m.channels === "number" && !isNaN(m.channels)) {
+    parts.push(m.channels === 1 ? "Mono" : m.channels === 2 ? "Stereo" : `${m.channels}ch`);
+  }
+
+  if (m.genre) parts.push(m.genre);
+  if (typeof m.listeners === "number" && !isNaN(m.listeners)) parts.push(`${m.listeners} listeners`);
+  if (m.server) parts.push(m.server);
+  if (m.host) parts.push(m.host);
+
+  const uniq = [];
+  const seen = new Set();
+  for (const p of parts) {
+    const s = String(p).trim();
+    if (!s || seen.has(s)) continue;
+    seen.add(s);
+    uniq.push(s);
+  }
+
+  els.nowSong.textContent = uniq.join(" • ");
+  if (els.nowMeta) els.nowMeta.textContent = "";
+}
+
+/* Active highlight */
+function refreshActiveStationHighlight() {
+  const nodes = Array.from(document.querySelectorAll(".station"));
+  nodes.forEach(n => n.classList.remove("active"));
+  if (state.currentIndex >= 0 && state.currentIndex < state.currentItems.length) {
+    const cur = state.currentItems[state.currentIndex];
+    for (const n of nodes) {
+      const name = n.querySelector(".name");
+      if (name && cur && name.textContent === (cur.name || "")) {
+        n.classList.add("active");
+        n.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        break;
       }
-
-      /**
-       * Generates a slug from a playlist object.
-       * Tries to derive from URL, then falls back to name.
-       * @param {object} playlist - The playlist object.
-       * @returns {string} The generated slug.
-       */
-      function slugFromPlaylist(playlist) {
-        if (playlist && playlist.url) {
-          try {
-            const part = playlist.url.split("/").pop() || "";
-            if (part) {
-              return part.replace(/\.json(\?.*)?$/i, "").toLowerCase();
-            }
-          } catch (e) {
-            console.warn("Failed to parse slug from playlist URL:", e);
-          }
-        }
-        return slugify(playlist?.name || "");
-      }
-
-      /**
-       * Converts a string into a URL-friendly slug.
-       * @param {string} text - The input string.
-       * @returns {string} The slugified string.
-       */
-      function slugify(text) {
-        return String(text)
-          .trim()
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-") // Replace non-alphanumeric with hyphens
-          .replace(/^-+|-+$/g, ""); // Remove leading/trailing hyphens
-      }
-
-      /**
-       * Resolves a playlist URL relative to the index or repository root.
-       * Handles absolute, protocol-relative, and relative paths.
-       * @param {string} url - The playlist URL from the index.
-       * @returns {string} The fully resolved URL.
-       */
-      function resolvePlaylistUrl(url) {
-        if (!url) return "";
-        // Absolute URL
-        if (/^https?:\/\//i.test(url)) {
-          return dedupeApi(url);
-        }
-        // Protocol-relative URL
-        if (/^\/\//.test(url)) {
-          return dedupeApi(location.protocol + url);
-        }
-        // Root-relative URL (relative to repository root)
-        if (url.startsWith("/")) {
-          return dedupeApi(new URL(url.replace(/^\//, ""), state.repoRoot).href);
-        }
-        // Relative to index directory or API directory
-        if (url.startsWith("api/")) {
-          return dedupeApi(new URL(url, state.repoRoot).href);
-        }
-        return dedupeApi(new URL(url, state.indexDir).href);
-      }
-
-      /**
-       * Removes duplicate "/api" segments in a URL path.
-       * E.g., "https://example.com/api/api/foo" becomes "https://example.com/api/foo"
-       * @param {string} url - The URL string.
-       * @returns {string} The URL with deduped "/api" segments.
-       */
-      function dedupeApi(url) {
-        return url.replace(/(?:\/api)+(\/)/g, "/api$1");
-      }
-
-      /**
-       * Handles changes in the URL hash, acting as a simple router.
-       * Renders the appropriate view (home or playlist).
-       */
-      function onRouteChange() {
-        const hashParts = getHashParts(); // Get parts of the hash (e.g., ["p", "my-playlist"])
-
-        window.scrollTo(0, 0); // Scroll to top on route change
-        els.searchInput.value = ""; // Clear search input
-        state.filter = ""; // Clear current filter
-
-        if (hashParts.length === 0) {
-          // Home route
-          state.currentRoute = "";
-          state.currentSlug = null;
-          renderHome();
-          updateTitle();
-          setSearchPlaceholder("Search playlists…");
-          updateBrandText("home");
-          return;
-        }
-
-        if (hashParts[0] === "p" && hashParts[1]) {
-          // Playlist route (e.g., #/p/my-playlist)
-          const slug = hashParts[1].toLowerCase();
-          state.currentRoute = "p";
-          state.currentSlug = slug;
-          renderPlaylist(slug);
-          setSearchPlaceholder("Search streams in this playlist…");
-          updateBrandText("back");
-          return;
-        }
-
-        // Default to home if route is not recognized
-        state.currentRoute = "";
-        state.currentSlug = null;
-        renderHome();
-        updateBrandText("home");
-      }
-
-      /**
-       * Parses the URL hash into an array of parts.
-       * @returns {string[]} An array of hash parts, e.g., ["p", "my-playlist"].
-       */
-      function getHashParts() {
-        const hash = (location.hash || "").replace(/^#/, ""); // Remove leading '#'
-        return hash.split("/").filter(Boolean); // Split by '/' and remove empty strings
-      }
-
-      /**
-       * Updates the document title.
-       * @param {string} [pageTitle] - The specific title for the current page.
-       */
-      function updateTitle(pageTitle) {
-        document.title = pageTitle
-          ? `${pageTitle} — ${CONFIG.SITE_TITLE}`
-          : CONFIG.SITE_TITLE;
-      }
-
-      /**
-       * Updates the brand text/link in the top bar.
-       * @param {"home"|"back"} [mode="home"] - Controls the text and behavior ("home" or "back" arrow).
-       */
-      function updateBrandText(mode = "home") {
-        if (els.brand) {
-          if (mode === "back") {
-            els.brand.innerHTML = `&larr; Go Back`;
-          } else {
-            els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
-          }
-        }
-      }
-
-      /**
-       * Sets the placeholder text for the search input.
-       * @param {string} text - The placeholder text.
-       */
-      function setSearchPlaceholder(text) {
-        els.searchInput.placeholder = text;
-      }
-
-      /**
-       * Handles search input, filtering playlists or streams.
-       * @param {Event} e - The input event.
-       */
-      function onSearch(e) {
-        state.filter = e.target.value.trim().toLowerCase();
-        if (state.currentRoute === "p" && state.currentPlaylist) {
-          // If in a playlist, filter streams
-          renderPlaylistContent(state.currentPlaylist, true);
-        } else {
-          // Otherwise, filter playlists on the home page
-          renderHome(true);
-        }
-      }
-
-      /**
-       * Renders the home page, displaying a list of playlists.
-       * @param {boolean} [isFiltered=false] - True if rendering due to a filter change.
-       */
-      function renderHome(isFiltered = false) {
-        if (!state.index) {
-          // If index not loaded, show loading state
-          els.app.innerHTML = `<div class="loading">Loading…</div>`;
-          return;
-        }
-
-        const filter = state.filter;
-        // Convert playlist map to an array and filter if necessary
-        const playlists = [...state.playlistMap.entries()].map(([slug, p]) => ({
-          slug,
-          ...p,
-        }));
-        const filteredPlaylists = filter
-          ? playlists.filter(
-              (p) =>
-                p.name.toLowerCase().includes(filter) || p.slug.includes(filter),
-            )
-          : playlists;
-
-        // Update title only if not a filtered refresh
-        if (!isFiltered) {
-          updateTitle();
-        }
-
-        // Display message if no playlists match the filter
-        if (!filteredPlaylists.length) {
-          els.app.innerHTML = `
-            <div class="section-title">Playlists</div>
-            <div class="empty">No playlists match “${escapeHtml(filter)}”.</div>
-          `;
-          return;
-        }
-
-        // Create document fragment for efficient DOM updates
-        const fragment = document.createDocumentFragment();
-
-        // Section title
-        const titleEl = document.createElement("div");
-        titleEl.className = "section-title";
-        titleEl.textContent = `Playlists ${filter ? `(filtered)` : ""}`;
-        fragment.appendChild(titleEl);
-
-        // Grid for playlist cards
-        const gridEl = document.createElement("div");
-        gridEl.className = "grid";
-
-        // Create a card for each playlist
-        for (const p of filteredPlaylists) {
-          const cardEl = document.createElement("a");
-          cardEl.className = "card";
-          cardEl.href = `#/p/${p.slug}`;
-          cardEl.innerHTML = `
-            <span class="title">${escapeHtml(p.name)}</span>
-            <span class="meta">${p.count ?? "—"} streams</span>
-          `;
-          gridEl.appendChild(cardEl);
-        }
-        fragment.appendChild(gridEl);
-
-        // Replace existing app content
-        els.app.replaceChildren(fragment);
-      }
-
-      /**
-       * Renders a specific playlist, fetching its content if necessary.
-       * @param {string} slug - The slug of the playlist to render.
-       */
-      async function renderPlaylist(slug) {
-        const playlistMeta = state.playlistMap.get(slug);
-        // Prioritize URL from playlistMap, otherwise construct a default
-        const playlistUrl =
-          playlistMeta?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
-        // List of candidate URLs to try fetching from
-        const candidateUrls = unique([
-          playlistUrl,
-          resolvePlaylistUrl(`playlists/${slug}.json`), // Generic path
-          resolvePlaylistUrl(`api/playlists/${slug}.json`), // API path
-        ]);
-        const playlistName = playlistMeta?.name || slug;
-
-        updateTitle(playlistName); // Update document title
-        els.app.innerHTML = `<div class="loading">Loading “${escapeHtml(
-          playlistName,
-        )}”…</div>`; // Show loading
-
-        try {
-          // Fetch playlist data from the first successful URL
-          const { url, data } = await fetchFirstOkJson(candidateUrls);
-          state.currentPlaylist = data;
-          state.currentPlaylistUrl = url;
-          state.currentItems = Array.isArray(data.items) ? data.items : [];
-          renderPlaylistContent(data); // Render the playlist's streams
-        } catch (e) {
-          // Display error if playlist loading fails
-          const lastTried = e?.__lastTried || candidateUrls[candidateUrls.length - 1] || playlistUrl;
-          console.error("Playlist fetch failed:", lastTried, e);
-          els.app.innerHTML = `
-            <div class="error">
-              Failed to load playlist: ${escapeHtml(e.message || e)}<br/>
-              Tried URL: <a class="link" href="${escapeHtml(
-                lastTried,
-              )}" target="_blank" rel="noopener">${escapeHtml(lastTried)}</a>
-            </div>
-          `;
-        }
-      }
-
-      /**
-       * Renders the content (streams) of a given playlist.
-       * @param {object} playlistData - The playlist JSON object.
-       * @param {boolean} [isFiltered=false] - True if rendering due to a filter change.
-       */
-      function renderPlaylistContent(playlistData, isFiltered = false) {
-        const playlistName = playlistData.name || state.currentSlug || "Playlist";
-        const totalStreams = playlistData.count ?? (playlistData.items?.length || 0);
-
-        if (!isFiltered) {
-          updateTitle(playlistName); // Update title if not a filtered refresh
-        }
-
-        const filter = state.filter;
-        const allItems = state.currentItems || [];
-        // Filter streams based on search input
-        const filteredItems = filter
-          ? allItems.filter((item) =>
-              (item.name || "").toLowerCase().includes(filter),
-            )
-          : allItems;
-
-        const fragment = document.createDocumentFragment();
-
-        // Section title and stream count
-        const titleRow = document.createElement("div");
-        titleRow.className = "row";
-        titleRow.innerHTML = `
-          <div class="section-title">${escapeHtml(playlistName)}</div>
-          <div class="small">Streams: ${filteredItems.length} ${
-            filter ? `(filtered)` : `of ${totalStreams}`
-          }</div>
-        `;
-        fragment.appendChild(titleRow);
-
-        // Playlist metadata (source URL, generated date)
-        if (
-          state.currentPlaylistUrl ||
-          playlistData.sourceFile ||
-          playlistData.generatedAt
-        ) {
-          const metaDiv = document.createElement("div");
-          metaDiv.className = "playlist-meta";
-          const metaParts = [];
-          if (state.currentPlaylistUrl) {
-            const encodedUrl = escapeHtml(state.currentPlaylistUrl);
-            metaParts.push(
-              `Source: <a class="link" href="${encodedUrl}" target="_blank" rel="noopener">${encodedUrl}</a>`,
-            );
-          } else if (playlistData.sourceFile) {
-            metaParts.push(`Source: ${escapeHtml(playlistData.sourceFile)}`);
-          }
-          if (playlistData.generatedAt) {
-            metaParts.push(
-              `Updated: ${escapeHtml(toLocalTime(playlistData.generatedAt))}`,
-            );
-          }
-          metaDiv.innerHTML = metaParts.join(" • ");
-          fragment.appendChild(metaDiv);
-        }
-
-        // Message if no streams match the filter
-        if (!filteredItems.length) {
-          const emptyDiv = document.createElement("div");
-          emptyDiv.className = "empty";
-          emptyDiv.textContent = `No streams match “${state.filter}”.`;
-          fragment.appendChild(emptyDiv);
-          els.app.replaceChildren(fragment);
-          return;
-        }
-
-        // List of stations
-        const stationsList = document.createElement("ul");
-        stationsList.className = "stations";
-
-        // Create a list item for each stream
-        filteredItems.forEach((item) => {
-          const listItem = document.createElement("li");
-          listItem.className = "station";
-
-          // Highlight active station
-          const isActive =
-            state.currentIndex >= 0 && state.currentItems[state.currentIndex] === item;
-          if (isActive) {
-            listItem.classList.add("active");
-          }
-
-          // Play button
-          const playButton = document.createElement("button");
-          playButton.className = "play";
-          playButton.title = "Play";
-          playButton.textContent = "▶️";
-          playButton.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent listItem click event
-            const itemIndex = state.currentItems.findIndex(
-              (i) => i === item || i.url === item.url,
-            );
-            if (itemIndex !== -1) {
-              playFromList(state.currentItems, itemIndex);
-            }
-          });
-
-          // Station name
-          const nameDiv = document.createElement("div");
-          nameDiv.className = "name";
-          nameDiv.textContent = item.name || "(Unnamed)";
-
-          // Actions container (e.g., open URL)
-          const actionsDiv = document.createElement("div");
-          actionsDiv.className = "actions";
-
-          // Open URL button
-          const openButton = document.createElement("button");
-          openButton.className = "open";
-          openButton.innerHTML = "↗";
-          openButton.title = "Open stream URL in new tab";
-          openButton.addEventListener("click", (e) => {
-            e.stopPropagation(); // Prevent listItem click event
-            if (item.url) {
-              window.open(item.url, "_blank", "noopener");
-            }
-          });
-          actionsDiv.appendChild(openButton);
-
-          listItem.appendChild(playButton);
-          listItem.appendChild(nameDiv);
-          listItem.appendChild(actionsDiv);
-
-          // Click on list item to play
-          listItem.addEventListener("click", () => {
-            const itemIndex = state.currentItems.findIndex(
-              (i) => i === item || i.url === item.url,
-            );
-            if (itemIndex !== -1) {
-              playFromList(state.currentItems, itemIndex);
-            }
-          });
-
-          stationsList.appendChild(listItem);
-        });
-
-        fragment.appendChild(stationsList);
-        els.app.replaceChildren(fragment);
-        refreshActiveStationHighlight(); // Ensure active station is highlighted and scrolled into view
-      }
-
-      /**
-       * Plays a stream from the `currentItems` list.
-       * @param {Array<object>} list - The list of stream items.
-       * @param {number} index - The index of the item to play.
-       */
-      function playFromList(list, index) {
-        const item = list[index];
-        if (!item) return;
-
-        state.currentIndex = index; // Update current index
-        setNowPlaying(item); // Update now playing display
-        loadAndPlay(item.url); // Load and play the audio
-        refreshActiveStationHighlight(); // Update UI highlight
-      }
-
-      /**
-       * Updates the now playing information in the player bar.
-       * @param {object|null} item - The current stream item or null if none.
-       */
-      function setNowPlaying(item) {
-        els.nowStation.textContent = item?.name || "Unknown Station";
-        els.nowSong.textContent = ""; // Clear song title initially
-        if (els.nowMeta) {
-          els.nowMeta.textContent = ""; // Clear meta initially
-        }
-        state.currentSong = ""; // Clear current song in state
-        state.streamMeta = {}; // Clear stream meta in state
-        els.playerBar.hidden = false; // Show the player bar
-        persistSession(); // Save session (to remember last played station)
-        updateCurrentSongInfo(); // Update song info from audio element
-        updateCurrentStreamMeta(item); // Update stream meta from item and probe
-      }
-
-      /**
-       * Sets up the Web Audio API for audio normalization (dynamics compressor).
-       * This is done only once when audio starts playing.
-       */
-      function setupAudioNormalization() {
-        if (state.audioContext) return; // Already setup
-
-        try {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          state.audioContext = new AudioContext();
-          state.audioSource = state.audioContext.createMediaElementSource(
-            els.audio,
-          );
-          state.compressor = state.audioContext.createDynamicsCompressor();
-
-          // Compressor parameters for normalization
-          state.compressor.threshold.setValueAtTime(
-            -50,
-            state.audioContext.currentTime,
-          );
-          state.compressor.knee.setValueAtTime(
-            40,
-            state.audioContext.currentTime,
-          );
-          state.compressor.ratio.setValueAtTime(
-            12,
-            state.audioContext.currentTime,
-          );
-          state.compressor.attack.setValueAtTime(
-            0,
-            state.audioContext.currentTime,
-          );
-          state.compressor.release.setValueAtTime(
-            0.25,
-            state.audioContext.currentTime,
-          );
-
-          // Connect nodes: audio source -> compressor -> destination
-          state.audioSource.connect(state.compressor);
-          state.compressor.connect(state.audioContext.destination);
-        } catch (e) {
-          console.error("Failed to initialize Web Audio API for normalization:", e);
-        }
-      }
-
-      /**
-       * Attempts to play the audio element.
-       */
-      function playAudio() {
-        if (!els.audio.src) return;
-
-        // Setup audio context if not already done
-        if (!state.audioContext) {
-          setupAudioNormalization();
-        }
-
-        // Resume audio context if suspended (e.g., after user interaction)
-        if (state.audioContext && state.audioContext.state === "suspended") {
-          state.audioContext.resume().catch((e) => {
-            console.error("Audio context resume failed:", e);
-          });
-        }
-
-        // Play the audio, handling potential Autoplay Policy errors
-        els.audio.play().catch((e) => {
-          if (e.name !== "AbortError") {
-            // AbortError is common and expected if user pauses immediately
-            console.warn("Audio play failed:", e);
-          }
-        });
-      }
-
-      /**
-       * Pauses the audio element.
-       */
-      function pauseAudio() {
-        els.audio.pause();
-      }
-
-      /**
-       * Loads a new audio source and attempts to play it.
-       * @param {string} url - The URL of the audio stream.
-       */
-      function loadAndPlay(url) {
-        try {
-          els.audio.src = url || ""; // Set new source or clear it
-          if (!url) {
-            pauseAudio(); // If no URL, stop playback
-            return;
-          }
-          playAudio();
-        } catch (e) {
-          console.error("Audio error:", e);
-        }
-      }
-
-      /**
-       * Toggles play/pause state of the audio.
-       */
-      function togglePlayPause() {
-        if (!els.audio.src) return; // Cannot play if no source
-        if (els.audio.paused) {
-          playAudio();
-        } else {
-          pauseAudio();
-        }
-      }
-
-      /**
-       * Updates the play/pause button icon.
-       * @param {boolean} isPlaying - True if audio is playing, false otherwise.
-       */
-      function updatePlayIcon(isPlaying) {
-        els.playPauseBtn.textContent = isPlaying ? "⏸️" : "▶️";
-      }
-
-      /**
-       * Plays the next stream in the current playlist.
-       * Cycles back to the beginning if at the end.
-       */
-      function playNext() {
-        if (!state.currentItems.length) return;
-        const nextIndex = (state.currentIndex + 1) % state.currentItems.length;
-        state.currentIndex = nextIndex;
-        const nextItem = state.currentItems[nextIndex];
-        setNowPlaying(nextItem);
-        loadAndPlay(nextItem.url);
-        refreshActiveStationHighlight();
-      }
-
-      /**
-       * Plays the previous stream in the current playlist.
-       * Cycles back to the end if at the beginning.
-       */
-      function playPrev() {
-        if (!state.currentItems.length) return;
-        const prevIndex =
-          (state.currentIndex - 1 + state.currentItems.length) %
-          state.currentItems.length;
-        state.currentIndex = prevIndex;
-        const prevItem = state.currentItems[prevIndex];
-        setNowPlaying(prevItem);
-        loadAndPlay(prevItem.url);
-        refreshActiveStationHighlight();
-      }
-
-      /**
-       * Shuffles to a random stream or a random playlist.
-       * If in a playlist, shuffles to a random stream within it.
-       * Otherwise, shuffles to a random playlist and navigates there.
-       */
-      async function shuffle() {
-        if (state.currentRoute === "p" && state.currentItems.length > 0) {
-          // Shuffle within current playlist
-          const randomIndex = Math.floor(
-            Math.random() * state.currentItems.length,
-          );
-          playFromList(state.currentItems, randomIndex);
-        } else if (state.playlistMap.size > 0) {
-          // Shuffle to a random playlist
-          const playlistSlugs = Array.from(state.playlistMap.keys());
-          const randomSlug =
-            playlistSlugs[Math.floor(Math.random() * playlistSlugs.length)];
-          location.hash = `#/p/${randomSlug}`; // Navigate to random playlist
-        }
-      }
-
-      /**
-       * Toggles the mute state of the audio.
-       */
-      function toggleMute() {
-        els.audio.muted = !els.audio.muted;
-        persistVolume(); // Save mute state
-      }
-
-      /**
-       * Updates the mute button icon based on the audio's mute state.
-       */
-      function updateMuteIcon() {
-        const isMuted = els.audio.muted || els.audio.volume === 0;
-        els.muteBtn.textContent = isMuted ? "🔇" : "🔊";
-      }
-
-      /**
-       * Updates the volume range slider, percentage display, and mute icon.
-       */
-      function updateVolumeDisplay() {
-        els.volumeRange.value = els.audio.volume;
-        els.volumePercentage.textContent = `${Math.round(
-          els.audio.volume * 100,
-        )}%`;
-        updateMuteIcon();
-        persistVolume(); // Save volume settings
-      }
-
-      /**
-       * Sets the audio volume, clamping it between 0 and 1.
-       * @param {number} volume - The desired volume level.
-       */
-      function setVolume(volume) {
-        els.audio.volume = Math.max(0, Math.min(1, volume));
-      }
-
-      /**
-       * Increases the volume by a small increment.
-       */
-      function volumeUp() {
-        setVolume(els.audio.volume + 0.1);
-      }
-
-      /**
-       * Decreases the volume by a small increment.
-       */
-      function volumeDown() {
-        setVolume(els.audio.volume - 0.1);
-      }
-
-      /**
-       * Handles audio errors, logging a warning and clearing song info.
-       */
-      function onAudioError() {
-        console.warn("Audio error", els.audio.error);
-        els.nowSong.textContent = "";
-      }
-
-      /**
-       * Updates the current song information displayed in the player bar.
-       * Tries to get title from metadata (ICY or MediaSession) or audio element title.
-       */
-      function updateCurrentSongInfo() {
-        let songTitle = "";
-
-        // Check for ICY metadata in text tracks
-        if (els.audio.textTracks && els.audio.textTracks.length > 0) {
-          const icyTrack = Array.from(els.audio.textTracks).find(
-            (t) => t.kind === "metadata",
-          );
-          if (icyTrack) {
-            // Remove previous listener to avoid duplicates
-            icyTrack.oncuechange = null;
-            icyTrack.oncuechange = () => {
-              if (icyTrack.activeCues.length > 0) {
-                const cue = icyTrack.activeCues[0];
-                const match = /StreamTitle='([^;]+)';/.exec(cue.text);
-                songTitle = match && match[1] ? match[1] : cue.text;
-              } else {
-                songTitle = "";
-              }
-              els.nowSong.textContent = songTitle || "";
-              state.currentSong = songTitle || "";
-              renderMetaLine(); // Re-render meta line to include song title
-            };
-
-            // If cues already exist, process them immediately
-            if (icyTrack.activeCues.length > 0) {
-              const cue = icyTrack.activeCues[0];
-              const match = /StreamTitle='([^;]+)';/.exec(cue.text);
-              songTitle = match && match[1] ? match[1] : cue.text;
-            }
-          }
-        }
-
-        // Fallback to Media Session API metadata
-        if (
-          !songTitle &&
-          navigator.mediaSession &&
-          navigator.mediaSession.metadata &&
-          navigator.mediaSession.metadata.title
-        ) {
-          songTitle = navigator.mediaSession.metadata.title;
-        }
-
-        // Fallback to audio element title attribute
-        if (!songTitle && els.audio.title) {
-          songTitle = els.audio.title;
-        }
-
-        els.nowSong.textContent = songTitle || "";
-        state.currentSong = songTitle || "";
-        renderMetaLine(); // Re-render meta line to include song title
-      }
-
-      /**
-       * Refreshes the active station highlight in the playlist view.
-       * Scrolls the active station into view if it's not visible.
-       */
-      function refreshActiveStationHighlight() {
-        const stationEls = Array.from(document.querySelectorAll(".station"));
-        stationEls.forEach((el) => el.classList.remove("active")); // Remove all active highlights
-
-        if (state.currentIndex >= 0 && state.currentIndex < state.currentItems.length) {
-          const currentItem = state.currentItems[state.currentIndex];
-          for (const el of stationEls) {
-            const nameEl = el.querySelector(".name");
-            // Match by name or URL (if name not found)
-            if (
-              nameEl &&
-              currentItem &&
-              nameEl.textContent === (currentItem.name || "")
-            ) {
-              el.classList.add("active");
-              // Scroll active station into view smoothly
-              el.scrollIntoView({ behavior: "smooth", block: "nearest" });
-              break;
-            }
-          }
-        }
-      }
-
-      /**
-       * Persists the current session state (e.g., current playlist, index, volume)
-       * to local storage. (Currently commented out in its full form, only volume is persisted).
-       */
-      function persistSession() {
-        try {
-          const sessionData = {
-            slug: state.currentSlug,
-            index: state.currentIndex,
-            // volume: els.audio.volume, // Volume is persisted separately
-            // muted: els.audio.muted,   // Muted state is persisted separately
-            station: state.currentItems[state.currentIndex] || null,
-          };
-          // localStorage.setItem("radio:session", JSON.stringify(sessionData));
-        } catch (e) {
-          console.error("Failed to persist session:", e);
-        }
-      }
-
-      /**
-       * Restores the last session state from local storage.
-       * (Currently a placeholder, as full session restore is more complex.)
-       */
-      function restoreLastSession() {
-        // try {
-        //   const stored = localStorage.getItem("radio:session");
-        //   if (stored) {
-        //     const sessionData = JSON.parse(stored);
-        //     // Logic to restore: navigate to playlist, find station, start playing
-        //     // This part is more complex and depends on the application's lifecycle
-        //   }
-        // } catch (e) {
-        //   console.error("Failed to restore session:", e);
-        // }
-      }
-
-      /**
-       * Persists the audio volume and mute state to local storage.
-       */
-      function persistVolume() {
-        try {
-          const stored = localStorage.getItem("radio:last");
-          const data = stored ? JSON.parse(stored) : {};
-          data.volume = els.audio.volume;
-          data.muted = els.audio.muted;
-          localStorage.setItem("radio:last", JSON.stringify({ volume: data.volume, muted: data.muted }));
-        } catch (e) {
-          console.error("Failed to persist volume:", e);
-        }
-      }
-
-      /**
-       * Restores the audio volume and mute state from local storage.
-       */
-      function restoreVolume() {
-        try {
-          const stored = localStorage.getItem("radio:last");
-          const data = stored ? JSON.parse(stored) : {};
-          if (typeof data.volume === "number") {
-            els.audio.volume = data.volume;
-          }
-          els.audio.muted = !!data.muted; // Ensure boolean
-          updateVolumeDisplay(); // Update UI to reflect restored volume/mute
-        } catch (e) {
-          console.error("Failed to restore volume:", e);
-        }
-      }
-
-      /**
-       * Fetches JSON data from a given URL.
-       * @param {string} url - The URL to fetch from.
-       * @returns {Promise<object>} A promise that resolves with the JSON data.
-       * @throws {Error} If the fetch request fails or the response is not OK.
-       */
-      async function fetchJson(url) {
-        const response = await fetch(url, {
-          headers: { Accept: "application/json" },
-          cache: "no-store", // Always fetch fresh data for JSON index/playlists
-        });
-        if (!response.ok) {
-          throw new Error(`${response.status} ${response.statusText}`);
-        }
-        return response.json();
-      }
-
-      /**
-       * Tries to fetch JSON from a list of URLs, returning the first successful response.
-       * @param {string[]} urls - An array of URLs to try.
-       * @returns {Promise<{url: string, data: object}>} A promise that resolves with the URL and JSON data of the first successful fetch.
-       * @throws {Error} If all URLs fail to fetch.
-       */
-      async function fetchFirstOkJson(urls) {
-        let lastError = null;
-        for (const url of urls) {
-          try {
-            const data = await fetchJson(url);
-            return { url: url, data: data };
-          } catch (e) {
-            lastError = e;
-          }
-        }
-        if (lastError) {
-          lastError.__lastTried = urls[urls.length - 1]; // Store the last tried URL for debugging
-          throw lastError;
-        }
-        throw new Error("All candidate URLs failed");
-      }
-
-      /**
-       * Escapes HTML special characters in a string to prevent XSS.
-       * @param {string} text - The input string.
-       * @returns {string} The HTML-escaped string.
-       */
-      function escapeHtml(text) {
-        return String(text)
-          .replaceAll("&", "&amp;")
-          .replaceAll("<", "&lt;")
-          .replaceAll(">", "&gt;")
-          .replaceAll('"', "&quot;")
-          .replaceAll("'", "&#039;");
-      }
-
-      /**
-       * Creates a debounced version of a function.
-       * The debounced function will only be called after a specified delay
-       * since the last time it was invoked.
-       * @param {Function} func - The function to debounce.
-       * @param {number} [delay=100] - The debounce delay in milliseconds.
-       * @returns {Function} The debounced function.
-       */
-      function debounce(func, delay = 100) {
-        let timeout;
-        return (...args) => {
-          clearTimeout(timeout);
-          timeout = setTimeout(() => func.apply(null, args), delay);
-        };
-      }
-
-      /**
-       * Converts an ISO 8601 timestamp to a localized date/time string.
-       * @param {string} isoTimestamp - The ISO 8601 timestamp string.
-       * @returns {string} The localized date/time string, or the original timestamp if conversion fails.
-       */
-      function toLocalTime(isoTimestamp) {
-        try {
-          return new Date(isoTimestamp).toLocaleString();
-        } catch {
-          return isoTimestamp;
-        }
-      }
-
-      /**
-       * Shortens a URL path, showing only the hostname if it's external,
-       * or just the pathname if it's on the same host.
-       * @param {string} url - The URL string.
-       * @returns {string} The shortened path or URL.
-       */
-      function shortenPath(url) {
-        try {
-          const u = new URL(url);
-          const sameHost = u.host === location.host;
-          return (sameHost ? "" : `${u.host}`) + u.pathname;
-        } catch {
-          return url;
-        }
-      }
-
-      /**
-       * Returns an array with only unique, truthy elements.
-       * @param {Array<any>} arr - The input array.
-       * @returns {Array<any>} An array of unique, truthy elements.
-       */
-      function unique(arr) {
-        return Array.from(new Set(arr.filter(Boolean)));
-      }
-
-      /**
-       * Updates the `streamMeta` state object and triggers a re-render of the meta line.
-       * Also initiates probes for additional stream metadata.
-       * @param {object} item - The current stream item.
-       */
-      function updateCurrentStreamMeta(item) {
-        const streamUrl = item?.url || "";
-        // Extract host from URL
-        const host = (() => {
-          try {
-            return new URL(streamUrl).host;
-          } catch {
-            return "";
-          }
-        })();
-
-        // Guess codec from URL extension
-        const guessedCodec = guessCodecFromUrl(streamUrl);
-
-        // Parse bitrate, handling string-to-number conversion
-        let bitrate = item?.bitrate ?? item?.br ?? item?.["icy-br"] ?? null;
-        if (typeof bitrate === "string") {
-          bitrate = parseInt(bitrate, 10);
-        }
-
-        // Parse sample rate
-        let sampleRate = item?.sampleRate ?? item?.samplerate;
-        // Parse channels
-        let channels = item?.channels;
-
-        // Initialize streamMeta with known data from playlist item
-        state.streamMeta = {
-          host: host,
-          codec: (item?.codec || item?.format || guessedCodec || "")
-            .toString()
-            .toUpperCase(),
-          bitrate: typeof bitrate === "number" && !isNaN(bitrate) ? bitrate : null,
-          sampleRate:
-            typeof sampleRate === "number" && !isNaN(sampleRate) ? sampleRate : null,
-          channels:
-            typeof channels === "number" && !isNaN(channels) ? channels : null,
-          genre: item?.genre || "",
-          server: "", // Will be filled by probes
-          listeners: null, // Will be filled by probes
-          stationName: item?.name || "", // Initial station name
-        };
-
-        renderMetaLine(); // Render meta line with initial data
-
-        // Probe for more metadata asynchronously
-        probeStreamHeaders(streamUrl)
-          .then((meta) => {
-            if (meta) applyMeta(meta);
-          })
-          .finally(renderMetaLine); // Re-render after headers probe
-
-        probeServerStatus(streamUrl)
-          .then((meta) => {
-            if (meta) applyMeta(meta);
-          })
-          .finally(renderMetaLine); // Re-render after server status probe
-
-        probeIcyMetadata(streamUrl)
-          .then((meta) => {
-            if (meta) applyMeta(meta);
-          })
-          .finally(renderMetaLine); // Re-render after ICY metadata probe
-      }
-
-      /**
-       * Applies new metadata to the `state.streamMeta` object,
-       * prioritizing new non-empty values.
-       * Updates `state.currentSong` if a title is found.
-       * @param {object} newMeta - The new metadata object.
-       */
-      function applyMeta(newMeta) {
-        if (!newMeta) return;
-
-        // List of keys to update in streamMeta
-        const keysToUpdate = [
-          "codec",
-          "bitrate",
-          "sampleRate",
-          "channels",
-          "genre",
-          "server",
-          "listeners",
-          "stationName",
-          "host",
-        ];
-
-        for (const key of keysToUpdate) {
-          // Update only if new value is not null/empty and not NaN for numbers
-          if (
-            newMeta[key] != null &&
-            newMeta[key] !== "" &&
-            !(typeof newMeta[key] === "number" && isNaN(newMeta[key]))
-          ) {
-            state.streamMeta[key] = newMeta[key];
-          }
-        }
-
-        // Update current song title if present
-        if (newMeta.title) {
-          state.currentSong = newMeta.title;
-          els.nowSong.textContent = newMeta.title;
-        }
-
-        renderMetaLine(); // Re-render the meta line after applying updates
-      }
-
-      /**
-       * Renders the current stream metadata into the `nowMeta` element.
-       */
-      function renderMetaLine() {
-        if (!els.nowMeta) return;
-
-        const meta = state.streamMeta || {};
-        const parts = [];
-
-        // Add current song if available
-        if (state.currentSong) {
-          parts.push(state.currentSong);
-        }
-
-        // Add codec if available
-        if (meta.codec) {
-          parts.push(meta.codec);
-        }
-
-        // Add bitrate if available and valid
-        if (typeof meta.bitrate === "number" && !isNaN(meta.bitrate)) {
-          parts.push(`${meta.bitrate} kbps`);
-        }
-
-        // Add sample rate if available and valid
-        if (typeof meta.sampleRate === "number" && !isNaN(meta.sampleRate)) {
-          parts.push(`${meta.sampleRate} Hz`);
-        }
-
-        // Add channel info if available and valid
-        if (typeof meta.channels === "number" && !isNaN(meta.channels)) {
-          if (meta.channels === 1) parts.push("Mono");
-          else if (meta.channels === 2) parts.push("Stereo");
-          else parts.push(`${meta.channels}ch`);
-        }
-
-        // Add genre if available
-        if (meta.genre) {
-          parts.push(meta.genre);
-        }
-
-        // Add listener count if available and valid
-        if (typeof meta.listeners === "number" && !isNaN(meta.listeners)) {
-          parts.push(`${meta.listeners} listeners`);
-        }
-
-        // Add server info if available
-        if (meta.server) {
-          parts.push(meta.server);
-        }
-
-        // Add host if available
-        if (meta.host) {
-          parts.push(meta.host);
-        }
-
-        // Join all parts with a " • " separator
-        els.nowMeta.textContent = parts.join(" • ");
-      }
-
-      /**
-       * Guesses the audio codec based on the stream URL's file extension.
-       * @param {string} url - The stream URL.
-       * @returns {string} The guessed codec (e.g., "MP3", "AAC", "HLS"), or an empty string.
-       */
-      function guessCodecFromUrl(url) {
-        try {
-          const pathname = new URL(url).pathname.toLowerCase();
-          if (pathname.endsWith(".m3u8")) return "HLS";
-          if (pathname.endsWith(".aac") || pathname.endsWith(".aacp"))
-            return "AAC";
-          if (pathname.endsWith(".mp3")) return "MP3";
-          if (pathname.endsWith(".ogg") || pathname.endsWith(".oga"))
-            return "OGG";
-          if (pathname.endsWith(".opus")) return "OPUS";
-          if (pathname.endsWith(".flac")) return "FLAC";
-        } catch (e) {
-          console.warn("Error guessing codec from URL:", e);
-        }
-        return "";
-      }
-
-      /**
-       * Maps a Content-Type header string to a known audio codec name.
-       * @param {string} contentType - The Content-Type string.
-       * @returns {string} The mapped codec (e.g., "MP3", "AAC", "HLS"), or an empty string.
-       */
-      function mapContentTypeToCodec(contentType) {
-        const type = (contentType || "").toLowerCase();
-        if (type.includes("aac")) return "AAC";
-        if (type.includes("mpeg")) return "MP3";
-        if (type.includes("ogg")) return "OGG";
-        if (type.includes("opus")) return "OPUS";
-        if (type.includes("flac")) return "FLAC";
-        if (type.includes("x-mpegurl") || type.includes("vnd.apple.mpegurl"))
-          return "HLS";
-        return "";
-      }
-
-      /**
-       * Parses an "Ice-Audio-Info" header string into an object of key-value pairs.
-       * Example: "bitrate=128;samplerate=44100;channels=2"
-       * @param {string} infoString - The Ice-Audio-Info string.
-       * @returns {object} An object containing the parsed audio info.
-       */
-      function parseIceAudioInfo(infoString) {
-        const info = {};
-        String(infoString || "")
-          .split(/[;,]/)
-          .forEach((part) => {
-            const [key, value] = part.split("=");
-            if (key && value) {
-              info[key.trim().toLowerCase()] = value.trim();
-            }
-          });
-        return info;
-      }
-
-      /**
-       * Fetches a URL with a specified timeout.
-       * @param {string} url - The URL to fetch.
-       * @param {object} [options={}] - Fetch options.
-       * @param {number} [timeout=4000] - The timeout in milliseconds.
-       * @returns {Promise<Response|null>} The fetch Response object, or null if timed out/failed.
-       */
-      async function fetchWithTimeout(url, options = {}, timeout = 4000) {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
-        try {
-          const response = await fetch(url, { ...options, signal: controller.signal });
-          clearTimeout(id);
-          return response;
-        } catch {
-          return null; // Return null on any error including abort
-        }
-      }
-
-      /**
-       * Fetches JSON from a URL with a timeout.
-       * @param {string} url - The URL to fetch JSON from.
-       * @param {number} [timeout=4500] - The timeout in milliseconds.
-       * @returns {Promise<object|null>} The JSON object, or null if fetch fails or times out.
-       */
-      async function fetchJsonTimeout(url, timeout = 4500) {
-        const response = await fetchWithTimeout(
-          url,
-          {
-            headers: { Accept: "application/json" },
-            mode: "cors",
-            cache: "no-store",
-          },
-          timeout,
-        );
-
-        if (response && response.ok) {
-          try {
-            return await response.json();
-          } catch {
-            return null; // JSON parsing failed
-          }
-        }
-        return null; // Fetch failed or not OK
-      }
-
-      /**
-       * Probes a stream URL's HTTP headers for metadata (Content-Type, Icy-Genre, Icy-Br, Ice-Audio-Info).
-       * Tries HEAD request first, then GET (with Range header for minimal data).
-       * @param {string} streamUrl - The URL of the audio stream.
-       * @returns {Promise<object|null>} An object containing parsed metadata, or null if no info found.
-       */
-      async function probeStreamHeaders(streamUrl) {
-        if (!streamUrl) return null;
-
-        const fetchWithOptions = async (method) =>
-          await fetchWithTimeout(
-            streamUrl,
-            {
-              method: method,
-              mode: "cors",
-              cache: "no-store",
-              redirect: "follow", // Follow redirects
-              headers: {
-                "Icy-MetaData": "1", // Request ICY metadata
-                ...(method === "GET" ? { Range: "bytes=0-1" } : {}), // For GET, only request 1 byte
-              },
-            },
-            3500, // Timeout for header probes
-          );
-
-        let response = await fetchWithOptions("HEAD"); // Try HEAD first
-        if (!response || !response.ok) {
-          response = await fetchWithOptions("GET"); // Fallback to GET
-        }
-
-        if (!response || !response.ok) {
-          return null;
-        }
-
-        const headers = response.headers;
-        const meta = {};
-
-        // Content-Type -> Codec
-        const contentType =
-          headers.get("content-type") || headers.get("Content-Type") || "";
-        meta.codec = mapContentTypeToCodec(contentType) || "";
-
-        // Server header
-        meta.server = (headers.get("server") || headers.get("Server") || "")
-          ?.split("/")[0]
-          ?.trim() || "";
-
-        // Icy-Genre
-        const icyGenre = headers.get("icy-genre") || headers.get("Icy-Genre");
-        if (icyGenre) {
-          meta.genre = icyGenre;
-        }
-
-        // Icy-Br (bitrate)
-        const icyBr = headers.get("icy-br");
-        if (icyBr) {
-          const br = parseInt(icyBr, 10);
-          if (!isNaN(br)) {
-            meta.bitrate = br;
-          }
-        }
-
-        // Ice-Audio-Info (more detailed audio info)
-        const iceAudioInfo =
-          headers.get("ice-audio-info") || headers.get("Ice-Audio-Info") || "";
-        if (iceAudioInfo) {
-          const parsedInfo = parseIceAudioInfo(iceAudioInfo);
-          if (parsedInfo.bitrate) {
-            const br = parseInt(parsedInfo.bitrate, 10);
-            if (!isNaN(br)) meta.bitrate = br;
-          }
-          if (parsedInfo.samplerate) {
-            const sr = parseInt(parsedInfo.samplerate, 10);
-            if (!isNaN(sr)) meta.sampleRate = sr;
-          }
-          if (parsedInfo.channels) {
-            const ch = parseInt(parsedInfo.channels, 10);
-            if (!isNaN(ch)) meta.channels = ch;
-          }
-        }
-
-        return meta;
-      }
-
-      /**
-       * Probes common Icecast/Shoutcast status pages for metadata.
-       * @param {string} streamUrl - The URL of the audio stream.
-       * @returns {Promise<object|null>} An object containing parsed metadata, or null if no info found.
-       */
-      async function probeServerStatus(streamUrl) {
-        let urlObj;
-        try {
-          urlObj = new URL(streamUrl);
-        } catch {
-          return null; // Invalid URL
-        }
-
-        const origin = urlObj.origin;
-        const pathname = urlObj.pathname || "";
-
-        // Common status page URLs to try
-        const candidateStatusUrls = unique([
-          // Icecast-specific mountpoint status
-          `${origin}/status-json.xsl?mount=${encodeURIComponent(pathname)}`,
-          // Generic Icecast status
-          `${origin}/status-json.xsl`,
-          `${origin}/status.xsl?json=1`,
-          // Shoutcast/other status
-          `${origin}/stats?json=1`,
-          `${origin}/statistics?json=1`,
-          `${origin}/json.xsl`,
-        ]);
-
-        for (const statusUrl of candidateStatusUrls) {
-          const data = await fetchJsonTimeout(statusUrl, 4500); // Fetch with timeout
-          if (!data) continue;
-
-          const parsedMeta = parseServerStatus(data, urlObj);
-          if (parsedMeta) return parsedMeta;
-        }
-        return null;
-      }
-
-      /**
-       * Parses the JSON response from an Icecast/Shoutcast status page.
-       * @param {object} jsonData - The JSON data from the status page.
-       * @param {URL} streamUrlObj - The URL object of the original stream.
-       * @returns {object|null} An object containing parsed metadata, or null if no relevant info.
-       */
-      function parseServerStatus(jsonData, streamUrlObj) {
-        // Icecast v2 status-json.xsl format
-        if (jsonData.icestats) {
-          const icestats = jsonData.icestats;
-          const sources = Array.isArray(icestats.source)
-            ? icestats.source
-            : icestats.source
-              ? [icestats.source]
-              : [];
-          const mountpointPath = streamUrlObj?.pathname || "";
-
-          let relevantSource = sources[0] || null;
-
-          // If multiple sources, try to find the one matching the current stream's mountpoint
-          if (mountpointPath && sources.length > 1) {
-            const exactMatch = sources.find((src) => {
-              try {
-                return src.listenurl && new URL(src.listenurl).pathname === mountpointPath;
-              } catch {
-                return false;
-              }
-            });
-            relevantSource = exactMatch || sources.find(src => String(src.listenurl || "").includes(mountpointPath)) || relevantSource;
-          }
-          
-          if (!relevantSource) return null;
-
-          const meta = {};
-          const audioInfo = relevantSource["audio_info"] || relevantSource["ice-audio-info"] || "";
-          const parsedAudioInfo = parseIceAudioInfo(audioInfo);
-
-          // Bitrate
-          if (relevantSource.bitrate) {
-            const br = parseInt(relevantSource.bitrate, 10);
-            if (!isNaN(br)) meta.bitrate = br;
-          }
-          if (parsedAudioInfo.bitrate) {
-            const br = parseInt(parsedAudioInfo.bitrate, 10);
-            if (!isNaN(br)) meta.bitrate = br;
-          }
-          // Sample rate
-          if (parsedAudioInfo.samplerate) {
-            const sr = parseInt(parsedAudioInfo.samplerate, 10);
-            if (!isNaN(sr)) meta.sampleRate = sr;
-          }
-          // Channels
-          if (parsedAudioInfo.channels) {
-            const ch = parseInt(parsedAudioInfo.channels, 10);
-            if (!isNaN(ch)) meta.channels = ch;
-          }
-          // Genre
-          if (relevantSource.genre) meta.genre = relevantSource.genre;
-          // Listeners
-          if (relevantSource.listeners != null) {
-            const listeners = parseInt(relevantSource.listeners, 10);
-            if (!isNaN(listeners)) meta.listeners = listeners;
-          }
-          // Station Name
-          if (relevantSource.server_name) meta.stationName = relevantSource.server_name;
-          // Codec from server type
-          if (relevantSource.server_type) {
-            meta.codec = meta.codec || mapContentTypeToCodec(String(relevantSource.server_type));
-          }
-          // Title
-          if (relevantSource.title) meta.title = relevantSource.title;
-
-          return meta;
-        }
-
-        // Shoutcast 1/2 JSON status format (simplified)
-        if (jsonData.streams || jsonData.songtitle || jsonData.currentlisteners != null) {
-          let streamData = null;
-          if (jsonData.streams) {
-            // Shoutcast 2 might have a 'streams' array or single 'stream' object
-            let streams = jsonData.streams.stream || jsonData.streams;
-            if (Array.isArray(streams)) {
-              streamData = streams[0]; // Take the first stream
-            } else if (typeof streams === "object") {
-              streamData = streams; // It's already the single stream object
-            }
-          } else {
-            // Might be flat Shoutcast 1-like JSON
-            streamData = jsonData;
-          }
-
-          const meta = {};
-          if (streamData) {
-            if (streamData.bitrate) {
-              const br = parseInt(streamData.bitrate, 10);
-              if (!isNaN(br)) meta.bitrate = br;
-            }
-            if (streamData.currentlisteners != null) {
-              const listeners = parseInt(streamData.currentlisteners, 10);
-              if (!isNaN(listeners)) meta.listeners = listeners;
-            }
-            if (streamData.servergenre) meta.genre = streamData.servergenre;
-            if (streamData.servertitle) meta.stationName = streamData.servertitle;
-            if (streamData.songtitle) meta.title = streamData.songtitle;
-            if (streamData.contenttype) {
-              meta.codec = mapContentTypeToCodec(String(streamData.contenttype));
-            }
-          }
-          return meta;
-        }
-
-        return null;
-      }
-
-      /**
-       * Probes for ICY metadata by reading a small chunk of the stream.
-       * This method requests the "Icy-MetaData: 1" header and then reads
-       * `Icy-MetaInt` bytes + 1 + metadata-size bytes from the stream.
-       * @param {string} streamUrl - The URL of the audio stream.
-       * @param {number} [timeout=7000] - The timeout for the fetch request in milliseconds.
-       * @returns {Promise<object|null>} An object containing parsed metadata (title, station name), or null if none.
-       */
-      async function probeIcyMetadata(streamUrl, timeout = 7000) {
-        try {
-          const controller = new AbortController();
-          const id = setTimeout(() => controller.abort(), timeout);
-
-          const response = await fetch(streamUrl, {
-            method: "GET",
-            mode: "cors",
-            cache: "no-store",
-            headers: { "Icy-MetaData": "1" }, // Request ICY metadata
-            signal: controller.signal,
-          });
-
-          clearTimeout(id);
-
-          if (!response || !response.ok || !response.body) return null;
-
-          const metaInterval = parseInt(
-            response.headers.get("icy-metaint") ||
-              response.headers.get("Icy-MetaInt") ||
-              "",
-            10,
-          );
-          const icyStationName =
-            response.headers.get("icy-name") || response.headers.get("Icy-Name") || "";
-
-          // If no meta interval, no ICY metadata (except possibly station name)
-          if (!metaInterval || isNaN(metaInterval)) {
-            return icyStationName ? { stationName: icyStationName } : null;
-          }
-
-          const reader = response.body.getReader();
-          let bufferedData = new Uint8Array(0);
-
-          /** Helper to consume N bytes, updating bufferedData. */
-          const consumeBytes = async (n) => {
-            if (bufferedData.length) {
-              if (bufferedData.length >= n) {
-                bufferedData = bufferedData.subarray(n);
-                return;
-              }
-              n -= bufferedData.length;
-              bufferedData = new Uint8Array(0);
-            }
-
-            while (n > 0) {
-              const { value, done } = await reader.read();
-              if (done) return; // Stream ended unexpectedly
-              if (value.length <= n) {
-                n -= value.length;
-              } else {
-                bufferedData = value.subarray(n);
-                n = 0;
-              }
-            }
-          };
-
-          /** Helper to read N bytes without consuming buffered data (only stream). */
-          const readBytes = async (n) => {
-            let result = new Uint8Array(n);
-            let bytesRead = 0;
-
-            if (bufferedData.length) {
-              const copyLen = Math.min(n, bufferedData.length);
-              result.set(bufferedData.subarray(0, copyLen), 0);
-              bytesRead += copyLen;
-              bufferedData = bufferedData.subarray(copyLen);
-            }
-
-            while (bytesRead < n) {
-              const { value, done } = await reader.read();
-              if (done) return null; // Stream ended unexpectedly
-              const copyLen = Math.min(n - bytesRead, value.length);
-              result.set(value.subarray(0, copyLen), bytesRead);
-              bytesRead += copyLen;
-              if (copyLen < value.length) {
-                bufferedData = value.subarray(copyLen);
-              }
-            }
-            return result;
-          };
-
-          await consumeBytes(metaInterval); // Skip audio data up to metadata block
-
-          const metaSizeByte = await readBytes(1);
-          if (!metaSizeByte) return icyStationName ? { stationName: icyStationName } : null;
-
-          const metaSize = metaSizeByte[0] * 16; // Metadata length in bytes
-          if (metaSize === 0) {
-            return icyStationName ? { stationName: icyStationName } : null; // No metadata this block
-          }
-
-          const metaData = await readBytes(metaSize);
-          // Try to abort the fetch as we have enough data
-          try {
-            controller.abort();
-          } catch (e) {
-            /* ignore error if already aborted/closed */
-          }
-
-          let metaString = "";
-          try {
-            metaString = new TextDecoder("latin1").decode(metaData); // ICY is often latin1
-          } catch {
-            try {
-              metaString = new TextDecoder().decode(metaData); // Fallback to default
-            } catch (e) {
-              console.warn("Failed to decode ICY metadata:", e);
-            }
-          }
-
-          const titleMatch =
-            /StreamTitle='([^']*)'/.exec(metaString) ||
-            /StreamTitle="([^"]*)"/.exec(metaString);
-          const streamTitle = titleMatch ? titleMatch[1].trim() : "";
-
-          return { title: streamTitle, stationName: icyStationName || "" };
-        } catch (e) {
-          // console.warn("ICY metadata probe failed:", e);
-          return null; // On any error (network, abort, etc.), return null
-        }
-      }
-    </script>
-  </body>
+    }
+  }
+}
+
+/* Persistence */
+function persistSession() {
+  try {
+    const data = {
+      slug: state.currentSlug,
+      index: state.currentIndex,
+      station: state.currentItems[state.currentIndex] || null
+    };
+    // reserved for future use
+  } catch(e) { console.error("Failed to persist session:", e); }
+}
+function restoreLastSession() {}
+
+function persistVolume() {
+  try {
+    const raw = localStorage.getItem("radio:last");
+    const data = raw ? JSON.parse(raw) : {};
+    data.volume = els.audio.volume;
+    data.muted = els.audio.muted;
+    localStorage.setItem("radio:last", JSON.stringify({ volume: data.volume, muted: data.muted }));
+  } catch(e) { console.error("Failed to persist volume:", e); }
+}
+function restoreVolume() {
+  try {
+    const raw = localStorage.getItem("radio:last");
+    const data = raw ? JSON.parse(raw) : {};
+    if (typeof data.volume === "number") els.audio.volume = data.volume;
+    els.audio.muted = !!data.muted;
+    updateVolumeDisplay();
+  } catch(e) { console.error("Failed to restore volume:", e); }
+}
+
+/* Networking helpers */
+async function fetchJson(url) {
+  const resp = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
+  if (!resp.ok) throw new Error(`${resp.status} ${resp.statusText}`);
+  return resp.json();
+}
+async function fetchFirstOkJson(list) {
+  let lastErr = null;
+  for (const u of list) {
+    try {
+      const data = await fetchJson(u);
+      return { url: u, data };
+    } catch (e) { lastErr = e; }
+  }
+  if (lastErr) { lastErr.__lastTried = list[list.length - 1]; throw lastErr; }
+  throw new Error("All candidate URLs failed");
+}
+
+/* Utils */
+function escapeHtml(s) {
+  return String(s)
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+function debounce(fn, ms=100) {
+  let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(null, args), ms); };
+}
+function toLocalTime(v) { try { return new Date(v).toLocaleString(); } catch { return v; } }
+function unique(arr) { return Array.from(new Set(arr.filter(Boolean))); }
+
+/* Tech meta probes and parsers */
+function guessCodecFromUrl(u) {
+  try {
+    const p = new URL(u).pathname.toLowerCase();
+    if (p.endsWith(".m3u8")) return "HLS";
+    if (p.endsWith(".aac") || p.endsWith(".aacp")) return "AAC";
+    if (p.endsWith(".mp3")) return "MP3";
+    if (p.endsWith(".ogg") || p.endsWith(".oga")) return "OGG";
+    if (p.endsWith(".opus")) return "OPUS";
+    if (p.endsWith(".flac")) return "FLAC";
+  } catch(e) { console.warn("Error guessing codec from URL:", e); }
+  return "";
+}
+function mapContentTypeToCodec(ct) {
+  const t = (ct || "").toLowerCase();
+  return t.includes("aac") ? "AAC"
+       : t.includes("mpeg") ? "MP3"
+       : t.includes("ogg") ? "OGG"
+       : t.includes("opus") ? "OPUS"
+       : t.includes("flac") ? "FLAC"
+       : (t.includes("x-mpegurl") || t.includes("vnd.apple.mpegurl")) ? "HLS"
+       : "";
+}
+function parseIceAudioInfo(s) {
+  const out = {};
+  String(s || "").split(/[;,]/).forEach(part => {
+    const [k, v] = part.split("=");
+    if (k && v) out[k.trim().toLowerCase()] = v.trim();
+  });
+  return out;
+}
+
+async function fetchWithTimeout(url, init = {}, ms = 4000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const resp = await fetch(url, { ...init, signal: ctrl.signal });
+    clearTimeout(timer);
+    return resp;
+  } catch {
+    clearTimeout(timer);
+    return null;
+  }
+}
+async function fetchJsonTimeout(url, ms = 4500) {
+  const resp = await fetchWithTimeout(url, { headers: { Accept: "application/json" }, mode: "cors", cache: "no-store" }, ms);
+  if (resp && resp.ok) {
+    try { return await resp.json(); } catch { return null; }
+  }
+  return null;
+}
+
+async function probeStreamHeaders(url) {
+  if (!url) return null;
+  const headUrl = proxyMeta(url);
+  const req = async method => await fetchWithTimeout(headUrl, {
+    method,
+    mode: "cors",
+    cache: "no-store",
+    redirect: "follow",
+    headers: { "Icy-MetaData": "1", ...(method === "GET" ? { Range: "bytes=0-1" } : {}) }
+  }, 3500);
+
+  let resp = await req("HEAD");
+  if ((!resp || !resp.ok) && (resp = await req("GET")), !resp || !resp.ok) return null;
+
+  const h = resp.headers;
+  const data = {};
+  const ct = h.get("content-type") || h.get("Content-Type") || "";
+  data.codec = mapContentTypeToCodec(ct) || "";
+  data.server = (h.get("server") || h.get("Server") || "")?.split("/")[0]?.trim() || "";
+
+  const icyGenre = h.get("icy-genre") || h.get("Icy-Genre");
+  if (icyGenre) data.genre = icyGenre;
+
+  const icyBr = h.get("icy-br") || h.get("Icy-Br");
+  if (icyBr) {
+    const n = parseInt(icyBr, 10);
+    if (!isNaN(n)) data.bitrate = n;
+  }
+
+  const iceInfo = h.get("ice-audio-info") || h.get("Ice-Audio-Info") || "";
+  if (iceInfo) {
+    const m = parseIceAudioInfo(iceInfo);
+    if (m.bitrate) { const n = parseInt(m.bitrate, 10); if (!isNaN(n)) data.bitrate = n; }
+    if (m.samplerate) { const n = parseInt(m.samplerate, 10); if (!isNaN(n)) data.sampleRate = n; }
+    if (m.channels) { const n = parseInt(m.channels, 10); if (!isNaN(n)) data.channels = n; }
+  }
+  return data;
+}
+
+async function probeServerStatus(url) {
+  let u;
+  try { u = new URL(url); } catch { return null; }
+  const origin = u.origin;
+  const path = u.pathname || "";
+
+  const mk = (p) => proxyMeta(`${origin}${p}`);
+  const candidates = unique([
+    mk(`/status-json.xsl?mount=${encodeURIComponent(path)}`),
+    mk(`/status-json.xsl`),
+    mk(`/status.xsl?json=1`),
+    mk(`/stats?json=1`),
+    mk(`/stats?sid=1&json=1`),
+    mk(`/stats?sid=2&json=1`),
+    mk(`/stats?sid=3&json=1`),
+    mk(`/statistics?json=1`),
+    mk(`/json.xsl`)
+  ]);
+
+  for (const c of candidates) {
+    const json = await fetchJsonTimeout(c, 4500);
+    if (!json) continue;
+    const parsed = parseServerStatus(json, u);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function parseServerStatus(json, u) {
+  if (json.icestats) {
+    const ic = json.icestats;
+    const srcs = Array.isArray(ic.source) ? ic.source : (ic.source ? [ic.source] : []);
+    const mount = u?.pathname || "";
+    let src = srcs[0] || null;
+    if (mount && srcs.length > 1) {
+      const exact = srcs.find(s => { try { return s.listenurl && new URL(s.listenurl).pathname === mount; } catch { return false; } });
+      src = exact || srcs.find(s => String(s.listenurl || "").includes(mount)) || src;
+    }
+    if (!src) return null;
+
+    const out = {};
+    const ai = src.audio_info || src["ice-audio-info"] || "";
+    const parsed = parseIceAudioInfo(ai);
+
+    if (src.bitrate) { const n = parseInt(src.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+    if (parsed.bitrate) { const n = parseInt(parsed.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+    if (parsed.samplerate) { const n = parseInt(parsed.samplerate, 10); if (!isNaN(n)) out.sampleRate = n; }
+    if (parsed.channels) { const n = parseInt(parsed.channels, 10); if (!isNaN(n)) out.channels = n; }
+    if (src.genre) out.genre = src.genre;
+    if (src.listeners != null) { const n = parseInt(src.listeners, 10); if (!isNaN(n)) out.listeners = n; }
+    if (src.server_name) out.stationName = src.server_name;
+    if (src.server_type) out.codec = out.codec || mapContentTypeToCodec(String(src.server_type));
+    if (src.title) out.title = src.title;
+
+    return out;
+  }
+
+  if (json.streams || json.songtitle || json.currentlisteners != null) {
+    let src = null;
+    if (json.streams) {
+      let s = json.streams.stream || json.streams;
+      if (Array.isArray(s)) src = s[0];
+      else if (typeof s === "object") src = s;
+    } else {
+      src = json;
+    }
+
+    const out = {};
+    if (src) {
+      if (src.bitrate) { const n = parseInt(src.bitrate, 10); if (!isNaN(n)) out.bitrate = n; }
+      if (src.currentlisteners != null) { const n = parseInt(src.currentlisteners, 10); if (!isNaN(n)) out.listeners = n; }
+      if (src.servergenre) out.genre = src.servergenre;
+      if (src.servertitle) out.stationName = src.servertitle;
+      if (src.songtitle) out.title = src.songtitle;
+      if (src.contenttype) out.codec = mapContentTypeToCodec(String(src.contenttype));
+    }
+    return out;
+  }
+
+  return null;
+}
+</script>
 </html>
