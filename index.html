@@ -565,14 +565,14 @@ function schedulePlayWatchdog() {
     if (state.playSeq !== seq) return;
     if (!isActuallyPlaying()) {
       // Skip to next stream if the current one failed to start in 3s
-      console.warn("Stream did not start within 3s; skipping to next.");
+      console.warn("Stream did not start within 5s; skipping to next.");
       if (state.currentItems.length > 1) {
         playNext();
       } else {
         updatePlayIcon(false);
       }
     }
-  }, 3000);
+  }, 5000);
 }
 
 function loadAndPlay(url) {
