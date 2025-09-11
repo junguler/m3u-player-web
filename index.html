@@ -55,6 +55,112 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 .small{color:var(--muted);font-size:13px}
 a.link{color:var(--brand);text-decoration:none}
 a.link:hover{text-decoration:underline}
+
+/* Stack the metadata ("now") on its own row above the controls on small screens */
+@media (max-width: 680px) {
+  .player {
+    /* Keep the same columns but add a second row for the stacked layout */
+    grid-template-columns: auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+  }
+
+  /* Make the metadata line span the full width on the first row */
+  .player .now {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0; /* keep text truncation working */
+  }
+
+  /* Place the transport buttons and volume on the second row */
+  .player > button,
+  .player > .volume {
+    grid-row: 2;
+  }
+
+  /* Tuck volume to the right */
+  .player > .volume {
+    justify-self: end;
+  }
+
+  /* Slightly tighter UI for small screens */
+  .now-station { font-size: 14px; }
+  .now-song    { font-size: 12px; }
+  #volumeRange { width: 80px; }
+}
+
+/* The hidden audio element shouldn't affect layout */
+.player audio { display: none; }
+
+/* Optional: give content a bit more bottom padding when the player becomes two rows */
+@media (max-width: 680px) {
+  .grid, .stations { padding-bottom: 132px; }
+}
+
+/* Smaller playback controls on narrow screens */
+@media (max-width: 680px) {
+  /* Keep the stacked layout from earlier */
+  .player {
+    grid-template-columns: auto auto auto auto 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 8px;
+  }
+
+  .player .now {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    min-width: 0;
+  }
+
+  .player > button,
+  .player > .volume {
+    grid-row: 2;
+  }
+
+  .player > .volume { justify-self: end; }
+
+  /* Shrink transport + volume buttons */
+  .player button {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+
+  /* Keep play/pause slightly larger for usability */
+  #playPauseBtn {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+
+  /* Tighter slider on small screens */
+  #volumeRange { width: 80px; }
+}
+
+/* Extra-small phones */
+@media (max-width: 420px) {
+  .player button {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+  }
+
+  #playPauseBtn {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  #volumeRange { width: 64px; }
+  .volume-percentage { display: none; }
+  .volume { gap: 6px; }
+
+  /* Slightly reduce bottom padding since the bar is shorter */
+  .grid, .stations { padding-bottom: 118px; }
+}
+
+/* The audio element stays hidden */
+.player audio { display: none; }
 </style>
 <noscript>This site needs JavaScript to load your playlists.</noscript>
 
