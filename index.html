@@ -5,7 +5,9 @@
 <title>My Radio</title>
 <meta name="description" content="Simple web player for my M3U radio playlists.">
 <meta name="theme-color" content="#0b0f14">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Ctext y='52' font-size='48'%3E%F0%9F%8E%A7%3C/text%3E%3C/svg%3E">
+<!-- SVG favicon -->
+<link rel="icon" type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0f14'/%3E%3Cpath d='M4 13a8 8 0 0 1 16 0' stroke='%235fb1ff' stroke-width='2'/%3E%3Crect x='3' y='13' width='4' height='7' rx='1' fill='%235fb1ff'/%3E%3Crect x='17' y='13' width='4' height='7' rx='1' fill='%235fb1ff'/%3E%3C/svg%3E" />
 <style>
 :root{--bg:#0b0f14;--bg-soft:#111824;--card:#0f1725;--text:#e6edf3;--muted:#aab6c3;--brand:#5fb1ff;--accent:#86efac;--border:#1f2937}
 @media(prefers-color-scheme:light){:root{--bg:#f7f9fc;--bg-soft:#ffffff;--card:#ffffff;--text:#0b0f14;--muted:#4b5563;--brand:#2563eb;--accent:#16a34a;--border:#e5e7eb}}
@@ -13,7 +15,7 @@
 html,body{height:100%}
 body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,helvetica neue,Noto Sans,Arial,apple color emoji,segoe ui emoji;color:var(--text);background:var(--bg)}
 .topbar{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--bg-soft);border-bottom:1px solid var(--border);backdrop-filter:saturate(1.2) blur(6px)}
-.brand{font-weight:700;letter-spacing:.2px;color:var(--brand);user-select:none;text-decoration:none}
+.brand{font-weight:700;letter-spacing:.2px;color:var(--brand);user-select:none;text-decoration:none;display:inline-flex;align-items:center;gap:8px}
 #searchInput{flex:1;appearance:none;border:1px solid var(--border);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;outline:none}
 #searchInput::placeholder{color:var(--muted)}
 /* Wider main container to reduce left/right empty space */
@@ -33,14 +35,14 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 @media (max-width: 640px){ .stations{grid-template-columns:1fr} }
 
 .station{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;cursor:pointer}
-.station .play{font-size:18px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.station .play{font-size:18px;width:40px;height:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .station .name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .station .actions{display:flex;gap:6px}
-.station .open{border:1px solid var(--border);background:0 0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer}
+.station .open{border:1px solid var(--border);background:0 0;color:var(--muted);padding:6px 10px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .station.active{outline:2px solid var(--brand)}
 
 .player{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:auto auto auto auto 1fr auto;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--border);background:linear-gradient(180deg,transparent,rgba(0,0,0,6%)),var(--bg-soft);backdrop-filter:saturate(1.2) blur(6px)}
-.player button{height:40px;width:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer}
+.player button{height:40px;width:40px;border-radius:10px;border:1px solid var(--border);background:#111c2a;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .player .now{min-width:0}
 .now-station{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .now-song{color:var(--muted);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -161,11 +163,86 @@ a.link:hover{text-decoration:underline}
 
 /* The audio element stays hidden */
 .player audio { display: none; }
+
+/* SVG icons */
+.icon { width: 20px; height: 20px; display: inline-block; vertical-align: middle; color: inherit; }
+.brand .icon { width: 18px; height: 18px; }
+.player button .icon { width: 18px; height: 18px; }
+.station .play .icon { width: 18px; height: 18px; }
+.station .open .icon { width: 16px; height: 16px; }
+.player button svg, .station .open svg { pointer-events: none; } /* avoid eating button clicks */
 </style>
 <noscript>This site needs JavaScript to load your playlists.</noscript>
 
+<!-- SVG sprite: place once -->
+<svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true" focusable="false">
+  <symbol id="i-play" viewBox="0 0 24 24">
+    <path d="M8 5v14l11-7-11-7z" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-pause" viewBox="0 0 24 24">
+    <rect x="6" y="5" width="4" height="14" rx="1" fill="currentColor"/>
+    <rect x="14" y="5" width="4" height="14" rx="1" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-prev" viewBox="0 0 24 24">
+    <rect x="5" y="5" width="2" height="14" rx="1" fill="currentColor"/>
+    <path d="M20 19L10 12l10-7v14z" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-next" viewBox="0 0 24 24">
+    <rect x="17" y="5" width="2" height="14" rx="1" fill="currentColor"/>
+    <path d="M4 19l10-7L4 5v14z" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-shuffle" viewBox="0 0 24 24">
+    <path d="M4 6h3c3 0 5 4 9 4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M4 18h3c3 0 5-4 9-4h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M16 14l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-volume-high" viewBox="0 0 24 24">
+    <path d="M5 9h4l5-4v14l-5-4H5z" fill="currentColor"/>
+    <path d="M17 8c1.8 1.2 3 3 3 5s-1.2 3.8-3 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M17 5c2.9 1.8 5 4.9 5 8s-2.1 6.2-5 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".6"/>
+  </symbol>
+
+  <symbol id="i-volume-off" viewBox="0 0 24 24">
+    <path d="M5 9h4l5-4v14l-5-4H5z" fill="currentColor"/>
+    <path d="M18 9l4 4m0-4l-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-plus" viewBox="0 0 24 24">
+    <path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-minus" viewBox="0 0 24 24">
+    <path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  </symbol>
+
+  <symbol id="i-external" viewBox="0 0 24 24">
+    <path d="M14 3h7v7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M21 3L11 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <path d="M5 7a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="i-headphones" viewBox="0 0 24 24">
+    <path d="M4 13a8 8 0 0 1 16 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    <rect x="3" y="13" width="4" height="7" rx="1" fill="currentColor"/>
+    <rect x="17" y="13" width="4" height="7" rx="1" fill="currentColor"/>
+  </symbol>
+
+  <symbol id="i-chevron-left" viewBox="0 0 24 24">
+    <path d="M14 18L8 12l6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</svg>
+
 <header class="topbar">
-  <a class="brand" id="brand" href="#/">🎧 My Radio</a>
+  <a class="brand" id="brand" href="#/">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-headphones" xlink:href="#i-headphones"></use></svg>
+    <span>My Radio</span>
+  </a>
   <input type="search" id="searchInput" placeholder="Search…" autocomplete="off">
 </header>
 
@@ -174,20 +251,34 @@ a.link:hover{text-decoration:underline}
 </main>
 
 <footer class="player" id="playerBar" aria-label="Audio player" hidden>
-  <button id="prevBtn" title="Previous">⏮️</button>
-  <button id="playPauseBtn" title="Play/Pause">▶️</button>
-  <button id="nextBtn" title="Next">⏭️</button>
-  <button id="shuffleBtn" title="Shuffle">🔀</button>
+  <button id="prevBtn" title="Previous" aria-label="Previous">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-prev" xlink:href="#i-prev"></use></svg>
+  </button>
+  <button id="playPauseBtn" title="Play/Pause" aria-label="Play">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-play" xlink:href="#i-play"></use></svg>
+  </button>
+  <button id="nextBtn" title="Next" aria-label="Next">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-next" xlink:href="#i-next"></use></svg>
+  </button>
+  <button id="shuffleBtn" title="Shuffle" aria-label="Shuffle">
+    <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-shuffle" xlink:href="#i-shuffle"></use></svg>
+  </button>
   <div class="now">
     <div id="nowStation" class="now-station">No station selected</div>
     <div id="nowSong" class="now-song"></div>
     <div id="nowMeta" class="now-meta"></div>
   </div>
   <div class="volume">
-    <button id="muteBtn" title="Mute/Unmute">🔊</button>
-    <button id="volDownBtn" title="Volume Down">-</button>
+    <button id="muteBtn" title="Mute/Unmute" aria-label="Mute">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-volume-high" xlink:href="#i-volume-high"></use></svg>
+    </button>
+    <button id="volDownBtn" title="Volume Down" aria-label="Volume Down">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-minus" xlink:href="#i-minus"></use></svg>
+    </button>
     <input id="volumeRange" type="range" min="0" max="1" step="0.01" value="1">
-    <button id="volUpBtn" title="Volume Up">+</button>
+    <button id="volUpBtn" title="Volume Up" aria-label="Volume Up">
+      <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-plus" xlink:href="#i-plus"></use></svg>
+    </button>
     <span id="volumePercentage" class="volume-percentage">100%</span>
   </div>
   <audio id="audio" preload="none" crossorigin="anonymous"></audio>
@@ -420,7 +511,11 @@ function updateTitle(t) {
 }
 function updateBrandText(mode="home") {
   if (!els.brand) return;
-  mode === "back" ? els.brand.innerHTML = `&larr; Go Back` : els.brand.textContent = `🎧 ${CONFIG.SITE_TITLE}`;
+  if (mode === "back") {
+    els.brand.innerHTML = `${icon("chevron-left", 18)} <span>Go Back</span>`;
+  } else {
+    els.brand.innerHTML = `${icon("headphones", 18)} <span>${CONFIG.SITE_TITLE}</span>`;
+  }
 }
 function setSearchPlaceholder(p) {
   els.searchInput.placeholder = p;
@@ -556,7 +651,7 @@ function renderPlaylistContent(pl, skipTitle=false) {
     const btn = document.createElement("button");
     btn.className = "play";
     btn.title = "Play";
-    btn.textContent = "▶️";
+    btn.innerHTML = icon("play", 18);
     btn.addEventListener("click", ev => {
       ev.stopPropagation();
       const idx = state.currentItems.findIndex(x => x === item || x.url === item.url);
@@ -571,8 +666,8 @@ function renderPlaylistContent(pl, skipTitle=false) {
     actions.className = "actions";
     const open = document.createElement("button");
     open.className = "open";
-    open.innerHTML = "↗";
     open.title = "Open stream URL in new tab";
+    open.innerHTML = icon("external", 16);
     open.addEventListener("click", ev => {
       ev.stopPropagation();
       item.url && window.open(item.url, "_blank", "noopener");
@@ -697,7 +792,7 @@ function togglePlayPause() {
   els.audio.paused ? playAudio() : pauseAudio();
 }
 function updatePlayIcon(playing) {
-  els.playPauseBtn.textContent = playing ? "⏸️" : "▶️";
+  els.playPauseBtn.innerHTML = icon(playing ? "pause" : "play");
 }
 function playNext() {
   if (!state.currentItems.length) return;
@@ -732,7 +827,7 @@ async function shuffle() {
 function toggleMute() { els.audio.muted = !els.audio.muted; persistVolume(); }
 function updateMuteIcon() {
   const muted = els.audio.muted || els.audio.volume === 0;
-  els.muteBtn.textContent = muted ? "🔇" : "🔊";
+  els.muteBtn.innerHTML = icon(muted ? "volume-off" : "volume-high");
 }
 function updateVolumeDisplay() {
   els.volumeRange.value = els.audio.volume;
@@ -1167,6 +1262,11 @@ function debounce(fn, ms=100) {
 function toLocalTime(v) { try { return new Date(v).toLocaleString(); } catch { return v; } }
 function unique(arr) { return Array.from(new Set(arr.filter(Boolean))); }
 
+/* Icon helper */
+function icon(name, size = 20, cls = "icon") {
+  return `<svg class="${cls}" width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#i-${name}" xlink:href="#i-${name}"></use></svg>`;
+}
+
 /* Tech meta probes and parsers */
 function guessCodecFromUrl(u) {
   try {
@@ -1213,8 +1313,6 @@ async function fetchWithTimeout(url, init = {}, ms = 4000) {
     return null;
   }
 }
-// Renamed and moved fetchJsonTimeout logic into fetchJsonWithProxy
-// async function fetchJsonTimeout(url, ms = 4500) { ... }
 
 async function probeStreamHeaders(url) {
   if (!url) return null;
@@ -1316,8 +1414,6 @@ async function probeHlsManifest(hlsUrl) {
     // Extract Audio-only URI if present (often contains more specific stream metadata)
     const audioMatch = manifest.match(audioRegex);
     if (audioMatch && audioMatch[1]) {
-      // You could recursively probe this audio URI for its headers/status if needed
-      // For now, let's just note its presence.
       data.hlsAudioUri = audioMatch[1];
     }
 
@@ -1333,7 +1429,6 @@ async function probeHlsManifest(hlsUrl) {
       data.title = titleMatch[1].trim();
     }
 
-    // For HLS, the codec is usually inferred from the content type, but we can set it explicitly
     data.codec = data.codec || "HLS";
 
     return Object.keys(data).length > 0 ? data : null;
@@ -1449,3 +1544,4 @@ function parseServerStatus(json, u) {
   return null;
 }
 </script>
+</html>
