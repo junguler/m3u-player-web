@@ -27,8 +27,8 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px; padding-bottom: 96px;}
 .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit}
 .card:hover{transform:translateY(-1px);border-color:#2b3a50}
-.card .title{display:block;font-weight:600;color:var(--text)}
-.card .meta{color:var(--muted);font-size:13px}
+.card .title{display:block;font-weight:600;color:var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
+.card .meta{color:var(--muted);font-size:13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
 
 /* Sub-pages station list: two columns (responsive) */
 .stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none; padding-bottom: 96px;} /* Added padding-bottom here */
@@ -736,17 +736,25 @@ function renderHome(skipTitle=false) {
 
   if (!visible.length && state.favorites.length === 0) {
     els.app.innerHTML = `
-      <div class="section-title">Playlists</div>
+      <div class="row">
+        <div class="section-title">Playlists</div>
+        <div class="small">0 of ${all.length} playlists (filtered)</div>
+      </div>
       <div class="empty">No playlists match “${escapeHtml(q)}”.</div>
     `;
     return;
   }
 
   const frag = document.createDocumentFragment();
-  const title = document.createElement("div");
-  title.className = "section-title";
-  title.textContent = `Playlists ${q ? `(filtered)` : ""}`;
-  frag.appendChild(title);
+
+  const row = document.createElement("div");
+  row.className = "row";
+  const countText = q ? `${visible.length} of ${all.length} playlists (filtered)` : `${all.length} playlists`;
+  row.innerHTML = `
+    <div class="section-title">Playlists</div>
+    <div class="small">${countText}</div>
+  `;
+  frag.appendChild(row);
 
   const grid = document.createElement("div");
   grid.className = "grid";
