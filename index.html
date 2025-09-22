@@ -9,8 +9,8 @@
 <link rel="icon" type="image/svg+xml"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%230b0f14'/%3E%3Cpath d='M4 13a8 8 0 0 1 16 0' stroke='%235fb1ff' stroke-width='2'/%3E%3Crect x='3' y='13' width='4' height='7' rx='1' fill='%235fb1ff'/%3E%3Crect x='17' y='13' width='4' height='7' rx='1' fill='%235fb1ff'/%3E%3C/svg%3E" />
 <style>
-:root{--bg:#0b0f14;--bg-soft:#111824;--card:#0f1725;--text:#e6edf3;--muted:#aab6c3;--brand:#5fb1ff;--accent:#86efac;--border:#1f2937;--success:#10b981;--danger:#ef4444;--spinner:#5fb1ff}
-@media(prefers-color-scheme:light){:root{--bg:#f7f9fc;--bg-soft:#ffffff;--card:#ffffff;--text:#0b0f14;--muted:#4b5563;--brand:#2563eb;--accent:#16a34a;--border:#e5e7eb;--success:#059669;--danger:#dc2626;--spinner:#2563eb}}
+:root{--bg:#0b0f14;--bg-soft:#111824;--card:#0f1725;--text:#e6edf3;--muted:#aab6c3;--brand:#5fb1ff;--accent:#86efac;--border:#1f2937;--success:#10b981;--spinner:#5fb1ff}
+@media(prefers-color-scheme:light){:root{--bg:#f7f9fc;--bg-soft:#ffffff;--card:#ffffff;--text:#0b0f14;--muted:#4b5563;--brand:#2563eb;--accent:#16a34a;--border:#e5e7eb;--success:#059669;--spinner:#2563eb}}
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,helvetica neue,Noto Sans,Arial,apple color emoji,segoe ui emoji;color:var(--text);background:var(--bg)}
@@ -25,12 +25,10 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 .playlist-meta{color:var(--muted);font-size:13px;margin-bottom:16px}
 /* Wider, denser playlist grid on the home page */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px; padding-bottom: 96px;}
-.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit;position:relative}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px;transition:transform .08s ease,border-color .08s ease;text-decoration:none;color:inherit}
 .card:hover{transform:translateY(-1px);border-color:#2b3a50}
 .card .title{display:block;font-weight:600;color:var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
 .card .meta{color:var(--muted);font-size:13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
-.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity 0.2s}
-.card:hover .card-actions{opacity:1}
 
 /* Sub-pages station list: responsive columns (3 on desktop, scaling down to 1 on mobile) */
 .stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none; padding-bottom: 96px;}
@@ -54,17 +52,6 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 /* Favorites-specific styles */
 .fav-btn { background: var(--success); color: white; border-color: var(--success); }
 .fav-btn.active { background: var(--accent); border-color: var(--accent); }
-
-/* Blacklist-specific styles */
-.blacklist-btn { background: var(--danger); color: white; border-color: var(--danger); }
-.blacklist-btn.active { background: #f87171; border-color: #f87171; }
-
-/* Playlist actions buttons (small) */
-.playlist-fav-btn, .playlist-blacklist-btn { width: 24px; height: 24px; padding: 0; border-radius: 4px; font-size: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border); background: var(--bg-soft); color: var(--muted); cursor: pointer; transition: all 0.2s; }
-.playlist-fav-btn:hover { background: var(--success); color: white; }
-.playlist-fav-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-.playlist-blacklist-btn:hover { background: var(--danger); color: white; }
-.playlist-blacklist-btn.active { background: #f87171; color: white; border-color: #f87171; }
 
 /* Buffering spinner */
 .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--spinner); border-radius: 50%; border-top-color: transparent; animation: spin 1s linear infinite; }
@@ -298,11 +285,6 @@ a.link:hover{text-decoration:underline}
     <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor"/>
   </symbol>
 
-  <symbol id="i-ban" viewBox="0 0 24 24">
-    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-  </symbol>
-
   <symbol id="i-eq" viewBox="0 0 24 24">
     <rect x="3" y="3" width="3" height="18" rx="1.5" fill="currentColor"/>
     <rect x="9" y="6" width="3" height="12" rx="1.5" fill="currentColor"/>
@@ -474,9 +456,6 @@ const state = {
   playWatchdog: null,
   // New states
   favorites: [],
-  blacklist: [],
-  favoritePlaylists: [],
-  blacklistPlaylists: [],
   buffering: false,
   shuffleTargetSlug: null,
   eqPresets: { 
@@ -498,9 +477,6 @@ function init() {
   registerServiceWorker();
   boot();
   loadFavorites();
-  loadBlacklist();
-  loadFavoritePlaylists();
-  loadBlacklistPlaylists();
   loadEQ();
 }
 
@@ -717,42 +693,12 @@ function onRouteChange() {
   els.searchInput.value = "";
   state.filter = "";
 
-  if (parts[0] === "blacklist") {
-    state.currentRoute = "blacklist";
-    state.currentSlug = null;
-    renderBlacklist();
-    updateTitle("Blacklist Streams");
-    setSearchPlaceholder("Search blacklist streams…");
-    updateBrandText("back");
-    return;
-  }
-
-  if (parts[0] === "favorite-playlists") {
-    state.currentRoute = "favorite-playlists";
-    state.currentSlug = null;
-    renderFavoritePlaylists();
-    updateTitle("Favorite Playlists");
-    setSearchPlaceholder("Search favorite playlists…");
-    updateBrandText("back");
-    return;
-  }
-
-  if (parts[0] === "blacklist-playlists") {
-    state.currentRoute = "blacklist-playlists";
-    state.currentSlug = null;
-    renderBlacklistPlaylists();
-    updateTitle("Blacklisted Playlists");
-    setSearchPlaceholder("Search blacklisted playlists…");
-    updateBrandText("back");
-    return;
-  }
-
   if (parts[0] === "favorites") {
     state.currentRoute = "favorites";
     state.currentSlug = null;
     renderFavorites();
-    updateTitle("Favorite Streams");
-    setSearchPlaceholder("Search favorite streams…");
+    updateTitle("Favorites");
+    setSearchPlaceholder("Search favorites…");
     updateBrandText("back");
     return;
   }
@@ -805,10 +751,7 @@ function setSearchPlaceholder(p) {
 }
 function onSearch(e) {
   state.filter = e.target.value.trim().toLowerCase();
-  if (state.currentRoute === "blacklist") renderBlacklist(true);
-  else if (state.currentRoute === "favorite-playlists") renderFavoritePlaylists(true);
-  else if (state.currentRoute === "blacklist-playlists") renderBlacklistPlaylists(true);
-  else if (state.currentRoute === "favorites") renderFavorites(true);
+  if (state.currentRoute === "favorites") renderFavorites(true);
   else if (state.currentRoute === "p" && state.currentPlaylist) renderPlaylistContent(state.currentPlaylist, true);
   else renderHome(true);
 }
@@ -819,13 +762,11 @@ function renderHome(skipTitle=false) {
 
   const q = state.filter;
   const all = [...state.playlistMap.entries()].map(([slug, data]) => ({ slug, ...data }));
-  // Filter out blacklisted playlists
-  const nonBlacklisted = all.filter(p => !state.blacklistPlaylists.some(bp => bp.slug === p.slug));
-  const visible = q ? nonBlacklisted.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : nonBlacklisted;
+  const visible = q ? all.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : all;
 
   if (!skipTitle) updateTitle();
 
-  if (!visible.length && state.favorites.length === 0 && state.blacklist.length === 0 && state.favoritePlaylists.length === 0 && state.blacklistPlaylists.length === 0) {
+  if (!visible.length && state.favorites.length === 0) {
     els.app.innerHTML = `
       <div class="row">
         <div class="section-title">Playlists</div>
@@ -840,122 +781,44 @@ function renderHome(skipTitle=false) {
 
   const row = document.createElement("div");
   row.className = "row";
-  const countText = q ? `${visible.length} of ${nonBlacklisted.length} playlists (filtered)` : `${nonBlacklisted.length} playlists`;
+  const countText = q ? `${visible.length} of ${all.length} playlists (filtered)` : `${all.length} playlists`;
   row.innerHTML = `
     <div class="section-title">Playlists</div>
     <div class="small">${countText}</div>
   `;
   frag.appendChild(row);
 
-  const grid = document.createDocumentFragment();
+  const grid = document.createElement("div");
+  grid.className = "grid";
 
-  // Add Favorite Streams card first if there are any
-  if (state.favorites.length > 0 && (!q || "favorite streams".toLowerCase().includes(q))) {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = "#/favorites";
-    card.innerHTML = `
-      <span class="title">⭐ Favorite Streams</span>
+  // Add Favorites card first if there are any
+  if (state.favorites.length > 0 && (!q || "favorites".includes(q.toLowerCase()))) {
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = "#/favorites";
+    a.innerHTML = `
+      <span class="title">⭐ Favorites</span>
       <span class="meta">${state.favorites.length} streams</span>
     `;
-    grid.appendChild(card);
-  }
-
-  // Add Favorite Playlists card if there are any
-  if (state.favoritePlaylists.length > 0 && (!q || "favorite playlists".toLowerCase().includes(q))) {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = "#/favorite-playlists";
-    card.innerHTML = `
-      <span class="title">⭐ Favorite Playlists</span>
-      <span class="meta">${state.favoritePlaylists.length} playlists</span>
-    `;
-    grid.appendChild(card);
-  }
-
-  // Add Blacklist Streams card if there are any
-  if (state.blacklist.length > 0 && (!q || "blacklist streams".toLowerCase().includes(q))) {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = "#/blacklist";
-    card.innerHTML = `
-      <span class="title">🚫 Blacklist Streams</span>
-      <span class="meta">${state.blacklist.length} streams</span>
-    `;
-    grid.appendChild(card);
-  }
-
-  // Add Blacklisted Playlists card if there are any
-  if (state.blacklistPlaylists.length > 0 && (!q || "blacklisted playlists".toLowerCase().includes(q))) {
-    const card = document.createElement("a");
-    card.className = "card";
-    card.href = "#/blacklist-playlists";
-    card.innerHTML = `
-      <span class="title">🚫 Blacklisted Playlists</span>
-      <span class="meta">${state.blacklistPlaylists.length} playlists</span>
-    `;
-    grid.appendChild(card);
+    grid.appendChild(a);
   }
 
   for (const p of visible) {
-    const card = document.createElement("div");
-    card.className = "card";
-    const link = document.createElement("a");
-    link.href = `#/p/${p.slug}`;
-    link.style.display = "block";
-    link.style.flex = "1";
-    link.innerHTML = `
+    const a = document.createElement("a");
+    a.className = "card";
+    a.href = `#/p/${p.slug}`;
+    a.innerHTML = `
       <span class="title">${escapeHtml(p.name)}</span>
       <span class="meta">${p.count ?? "—"} streams</span>
     `;
-    card.appendChild(link);
-
-    // Add actions
-    const actions = document.createElement("div");
-    actions.className = "card-actions";
-
-    const isFavPlaylist = state.favoritePlaylists.some(fp => fp.slug === p.slug);
-    const favBtn = document.createElement("button");
-    favBtn.className = `playlist-fav-btn ${isFavPlaylist ? 'active' : ''}`;
-    favBtn.title = isFavPlaylist ? "Remove from favorite playlists" : "Favorite this playlist";
-    favBtn.innerHTML = icon("star", 12);
-    favBtn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (isFavPlaylist) removeFavoritePlaylist(p.slug);
-      else addFavoritePlaylist(p);
-      renderHome(true);
-    });
-
-    const isBlacklistPlaylist = state.blacklistPlaylists.some(bp => bp.slug === p.slug);
-    const blacklistBtn = document.createElement("button");
-    blacklistBtn.className = `playlist-blacklist-btn ${isBlacklistPlaylist ? 'active' : ''}`;
-    blacklistBtn.title = isBlacklistPlaylist ? "Remove from blacklisted playlists" : "Blacklist this playlist";
-    blacklistBtn.innerHTML = icon("ban", 12);
-    blacklistBtn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      if (isBlacklistPlaylist) removeBlacklistPlaylist(p.slug);
-      else addBlacklistPlaylist(p);
-      renderHome(true);
-    });
-
-    actions.appendChild(favBtn);
-    actions.appendChild(blacklistBtn);
-    card.appendChild(actions);
-
-    grid.appendChild(card);
+    grid.appendChild(a);
   }
-
-  const gridDiv = document.createElement("div");
-  gridDiv.className = "grid";
-  gridDiv.appendChild(grid);
-  frag.appendChild(gridDiv);
+  frag.appendChild(grid);
   els.app.replaceChildren(frag);
 }
 
 function renderFavorites(skipTitle = false) {
-  if (!skipTitle) updateTitle("Favorite Streams");
+  if (!skipTitle) updateTitle("Favorites");
 
   const q = state.filter;
   const items = state.favorites;
@@ -966,7 +829,7 @@ function renderFavorites(skipTitle = false) {
   const row = document.createElement("div");
   row.className = "row";
   row.innerHTML = `
-    <div class="section-title">Favorite Streams</div>
+    <div class="section-title">Favorites</div>
     <div class="small">Streams: ${visible.length} ${q ? `(filtered)` : ""}</div>
   `;
   frag.appendChild(row);
@@ -974,7 +837,7 @@ function renderFavorites(skipTitle = false) {
   if (!visible.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.innerHTML = `<p>No favorite streams match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a> and star some stations!</p>`;
+    empty.innerHTML = `<p>No favorites match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a> and star some stations!</p>`;
     frag.appendChild(empty);
     els.app.replaceChildren(frag);
     return;
@@ -1064,272 +927,6 @@ function renderFavorites(skipTitle = false) {
   refreshActiveStationHighlight();
 }
 
-function renderBlacklist(skipTitle = false) {
-  if (!skipTitle) updateTitle("Blacklist Streams");
-
-  const q = state.filter;
-  const items = state.blacklist;
-  const visible = q ? items.filter(f => f.name.toLowerCase().includes(q) || (f.playlistName && f.playlistName.toLowerCase().includes(q))) : items;
-
-  const frag = document.createDocumentFragment();
-
-  const row = document.createElement("div");
-  row.className = "row";
-  row.innerHTML = `
-    <div class="section-title">Blacklist Streams</div>
-    <div class="small">Streams: ${visible.length} ${q ? `(filtered)` : ""}</div>
-  `;
-  frag.appendChild(row);
-
-  if (!visible.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.innerHTML = `<p>No blacklisted streams match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a></p>`;
-    frag.appendChild(empty);
-    els.app.replaceChildren(frag);
-    return;
-  }
-
-  const ul = document.createElement("ul");
-  ul.className = "stations";
-  state.currentItems = items; // Set for navigation
-  visible.forEach((item, localIdx) => {
-    const globalIdx = items.findIndex(x => x.url === item.url);
-    const li = document.createElement("li");
-    li.className = "station";
-    const isActive = state.currentIndex >= 0 && state.currentItems[state.currentIndex]?.url === item.url;
-    if (isActive) li.classList.add("active");
-    li.tabIndex = 0; // For keyboard nav
-
-    const btn = document.createElement("button");
-    btn.className = "play";
-    btn.title = "Play";
-    btn.innerHTML = icon("play", 18);
-    btn.addEventListener("click", ev => {
-      ev.stopPropagation();
-      playFromList(state.currentItems, globalIdx);
-    });
-
-    // Wrap name and playlist in a single div for the middle grid column
-    const stationInfo = document.createElement("div");
-    stationInfo.className = "station-info";
-
-    const name = document.createElement("div");
-    name.className = "name";
-    name.textContent = item.name || "(Unnamed)";
-
-    const playlist = document.createElement("div");
-    playlist.className = "playlist";
-    playlist.textContent = item.playlistName ? `from "${item.playlistName}"` : "";
-
-    stationInfo.appendChild(name);
-    stationInfo.appendChild(playlist);
-
-    const actions = document.createElement("div");
-    actions.className = "actions";
-    const open = document.createElement("button");
-    open.className = "open";
-    open.title = "Open stream URL in new tab";
-    open.innerHTML = icon("external", 16);
-    open.addEventListener("click", ev => {
-      ev.stopPropagation();
-      item.url && window.open(item.url, "_blank", "noopener");
-    });
-
-    const blacklistBtn = document.createElement("button");
-    blacklistBtn.className = "blacklist-btn open active";
-    blacklistBtn.title = "Remove from blacklist";
-    blacklistBtn.innerHTML = icon("ban", 16);
-    blacklistBtn.addEventListener("click", ev => {
-      ev.stopPropagation();
-      removeBlacklist(item.url);
-    });
-
-    actions.appendChild(open);
-    actions.appendChild(blacklistBtn);
-
-    li.appendChild(btn);
-    li.appendChild(stationInfo);
-    li.appendChild(actions);
-
-    li.addEventListener("click", () => playFromList(state.currentItems, globalIdx));
-    li.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") playFromList(state.currentItems, globalIdx);
-      else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const next = ul.querySelectorAll('.station')[Array.from(ul.querySelectorAll('.station')).indexOf(li) + 1];
-        next?.focus();
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const prev = ul.querySelectorAll('.station')[Array.from(ul.querySelectorAll('.station')).indexOf(li) - 1];
-        prev?.focus();
-      }
-    });
-
-    ul.appendChild(li);
-  });
-
-  frag.appendChild(ul);
-  els.app.replaceChildren(frag);
-  refreshActiveStationHighlight();
-}
-
-function renderFavoritePlaylists(skipTitle = false) {
-  if (!skipTitle) updateTitle("Favorite Playlists");
-
-  const q = state.filter;
-  const items = state.favoritePlaylists;
-  const visible = q ? items.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : items;
-
-  const frag = document.createDocumentFragment();
-
-  const row = document.createElement("div");
-  row.className = "row";
-  row.innerHTML = `
-    <div class="section-title">Favorite Playlists</div>
-    <div class="small">Playlists: ${visible.length} ${q ? `(filtered)` : ""}</div>
-  `;
-  frag.appendChild(row);
-
-  if (!visible.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.innerHTML = `<p>No favorite playlists match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a> and favorite some!</p>`;
-    frag.appendChild(empty);
-    els.app.replaceChildren(frag);
-    return;
-  }
-
-  const grid = document.createElement("div");
-  grid.className = "grid";
-
-  visible.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "card";
-    const link = document.createElement("a");
-    link.href = `#/p/${p.slug}`;
-    link.style.display = "block";
-    link.style.flex = "1";
-    link.innerHTML = `
-      <span class="title">${escapeHtml(p.name)}</span>
-      <span class="meta">${p.count ?? "—"} streams</span>
-    `;
-    card.appendChild(link);
-
-    // Add actions
-    const actions = document.createElement("div");
-    actions.className = "card-actions";
-
-    const open = document.createElement("button");
-    open.className = "open";
-    open.title = "Open playlist URL in new tab";
-    open.innerHTML = icon("external", 16);
-    open.addEventListener("click", ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      p.url && window.open(p.url, "_blank", "noopener");
-    });
-
-    const favBtn = document.createElement("button");
-    favBtn.className = "playlist-fav-btn active";
-    favBtn.title = "Remove from favorite playlists";
-    favBtn.innerHTML = icon("star", 12);
-    favBtn.addEventListener("click", ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      removeFavoritePlaylist(p.slug);
-      renderFavoritePlaylists(true);
-    });
-
-    actions.appendChild(open);
-    actions.appendChild(favBtn);
-    card.appendChild(actions);
-
-    grid.appendChild(card);
-  });
-
-  frag.appendChild(grid);
-  els.app.replaceChildren(frag);
-}
-
-function renderBlacklistPlaylists(skipTitle = false) {
-  if (!skipTitle) updateTitle("Blacklisted Playlists");
-
-  const q = state.filter;
-  const items = state.blacklistPlaylists;
-  const visible = q ? items.filter(p => p.name.toLowerCase().includes(q) || p.slug.includes(q)) : items;
-
-  const frag = document.createDocumentFragment();
-
-  const row = document.createElement("div");
-  row.className = "row";
-  row.innerHTML = `
-    <div class="section-title">Blacklisted Playlists</div>
-    <div class="small">Playlists: ${visible.length} ${q ? `(filtered)` : ""}</div>
-  `;
-  frag.appendChild(row);
-
-  if (!visible.length) {
-    const empty = document.createElement("div");
-    empty.className = "empty";
-    empty.innerHTML = `<p>No blacklisted playlists match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a></p>`;
-    frag.appendChild(empty);
-    els.app.replaceChildren(frag);
-    return;
-  }
-
-  const grid = document.createElement("div");
-  grid.className = "grid";
-
-  visible.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "card";
-    const link = document.createElement("a");
-    link.href = `#/p/${p.slug}`;
-    link.style.display = "block";
-    link.style.flex = "1";
-    link.innerHTML = `
-      <span class="title">${escapeHtml(p.name)}</span>
-      <span class="meta">${p.count ?? "—"} streams</span>
-    `;
-    card.appendChild(link);
-
-    // Add actions
-    const actions = document.createElement("div");
-    actions.className = "card-actions";
-
-    const open = document.createElement("button");
-    open.className = "open";
-    open.title = "Open playlist URL in new tab";
-    open.innerHTML = icon("external", 16);
-    open.addEventListener("click", ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      p.url && window.open(p.url, "_blank", "noopener");
-    });
-
-    const blacklistBtn = document.createElement("button");
-    blacklistBtn.className = "playlist-blacklist-btn active";
-    blacklistBtn.title = "Remove from blacklisted playlists";
-    blacklistBtn.innerHTML = icon("ban", 12);
-    blacklistBtn.addEventListener("click", ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      removeBlacklistPlaylist(p.slug);
-      renderBlacklistPlaylists(true);
-    });
-
-    actions.appendChild(open);
-    actions.appendChild(blacklistBtn);
-    card.appendChild(actions);
-
-    grid.appendChild(card);
-  });
-
-  frag.appendChild(grid);
-  els.app.replaceChildren(frag);
-}
-
 async function renderPlaylist(slug) {
   const known = state.playlistMap.get(slug);
   const fallback = known?.url || resolvePlaylistUrl(`playlists/${slug}.json`);
@@ -1381,9 +978,7 @@ function renderPlaylistContent(pl, skipTitle=false) {
 
   const q = state.filter;
   const items = state.currentItems || [];
-  // Filter out blacklisted streams
-  const nonBlacklistedItems = items.filter(it => !state.blacklist.some(bl => bl.url === it.url));
-  const visible = q ? nonBlacklistedItems.filter(it => (it.name || "").toLowerCase().includes(q)) : nonBlacklistedItems;
+  const visible = q ? items.filter(it => (it.name || "").toLowerCase().includes(q)) : items;
 
   const frag = document.createDocumentFragment();
 
@@ -1464,20 +1059,8 @@ function renderPlaylistContent(pl, skipTitle=false) {
       else addFavorite(item, pl.name); // Pass playlist name
     });
 
-    const isBlacklisted = state.blacklist.some(bl => bl.url === item.url);
-    const blacklistBtn = document.createElement("button");
-    blacklistBtn.className = `open ${isBlacklisted ? 'blacklist-btn active' : ''}`;
-    blacklistBtn.title = isBlacklisted ? "Already blacklisted" : "Blacklist this stream";
-    blacklistBtn.innerHTML = icon("ban", 16);
-    blacklistBtn.addEventListener("click", ev => {
-      ev.stopPropagation();
-      if (isBlacklisted) return; // Already blacklisted, no action
-      addBlacklist(item, pl.name);
-    });
-
     actions.appendChild(open);
     actions.appendChild(favBtn);
-    actions.appendChild(blacklistBtn);
 
     li.appendChild(btn);
     li.appendChild(name);
@@ -1520,53 +1103,6 @@ function removeFavorite(url) {
   if (state.currentRoute === "p") renderPlaylistContent(state.currentPlaylist, true);
   else if (state.currentRoute === "favorites") renderFavorites(true);
   else if (state.currentRoute === "") renderHome(true); // Refresh home to update favorites card
-}
-
-function addBlacklist(item, playlistName) {
-  if (!state.blacklist.some(bl => bl.url === item.url)) {
-    state.blacklist.push({ ...item, playlistName });
-    saveBlacklist();
-    if (state.currentRoute === "p") renderPlaylistContent(state.currentPlaylist, true);
-    else if (state.currentRoute === "") renderHome(true); // Refresh home to update blacklist card
-  }
-}
-
-function removeBlacklist(url) {
-  state.blacklist = state.blacklist.filter(bl => bl.url !== url);
-  saveBlacklist();
-  if (state.currentRoute === "p") renderPlaylistContent(state.currentPlaylist, true);
-  else if (state.currentRoute === "blacklist") renderBlacklist(true);
-  else if (state.currentRoute === "") renderHome(true); // Refresh home to update blacklist card
-}
-
-function addFavoritePlaylist(p) {
-  if (!state.favoritePlaylists.some(fp => fp.slug === p.slug)) {
-    state.favoritePlaylists.push({ ...p });
-    saveFavoritePlaylists();
-    renderHome(true);
-  }
-}
-
-function removeFavoritePlaylist(slug) {
-  state.favoritePlaylists = state.favoritePlaylists.filter(fp => fp.slug !== slug);
-  saveFavoritePlaylists();
-  renderHome(true);
-  if (state.currentRoute === "favorite-playlists") renderFavoritePlaylists(true);
-}
-
-function addBlacklistPlaylist(p) {
-  if (!state.blacklistPlaylists.some(bp => bp.slug === p.slug)) {
-    state.blacklistPlaylists.push({ ...p });
-    saveBlacklistPlaylists();
-    renderHome(true);
-  }
-}
-
-function removeBlacklistPlaylist(slug) {
-  state.blacklistPlaylists = state.blacklistPlaylists.filter(bp => bp.slug !== slug);
-  saveBlacklistPlaylists();
-  renderHome(true);
-  if (state.currentRoute === "blacklist-playlists") renderBlacklistPlaylists(true);
 }
 
 function playFromList(list, idx) {
@@ -1828,10 +1364,7 @@ function playPrev() {
   refreshActiveStationHighlight();
 }
 async function shuffle() {
-  if (state.currentRoute === "blacklist" && state.blacklist.length > 0) {
-    const i = Math.floor(Math.random() * state.blacklist.length);
-    playFromList(state.blacklist, i);
-  } else if (state.currentRoute === "favorites" && state.favorites.length > 0) {
+  if (state.currentRoute === "favorites" && state.favorites.length > 0) {
     const i = Math.floor(Math.random() * state.favorites.length);
     playFromList(state.favorites, i);
   } else if (state.currentRoute === "p" && state.currentItems.length > 0) {
@@ -1846,7 +1379,7 @@ async function shuffle() {
 }
 
 function onKeydown(e) {
-  if (state.currentRoute !== "p" && state.currentRoute !== "favorites" && state.currentRoute !== "blacklist") return;
+  if (state.currentRoute !== "p" && state.currentRoute !== "favorites") return;
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
     const stations = document.querySelectorAll(".station");
@@ -2288,58 +1821,6 @@ function restoreVolume() {
   } catch(e) { console.error("Failed to restore volume:", e); }
 }
 
-function saveFavorites() {
-  localStorage.setItem("radio:favorites", JSON.stringify(state.favorites));
-}
-
-function loadFavorites() {
-  try {
-    const raw = localStorage.getItem("radio:favorites");
-    state.favorites = raw ? JSON.parse(raw) : [];
-  } catch(e) {
-    state.favorites = [];
-  }
-}
-
-function saveBlacklist() {
-  localStorage.setItem("radio:blacklist", JSON.stringify(state.blacklist));
-}
-
-function loadBlacklist() {
-  try {
-    const raw = localStorage.getItem("radio:blacklist");
-    state.blacklist = raw ? JSON.parse(raw) : [];
-  } catch(e) {
-    state.blacklist = [];
-  }
-}
-
-function saveFavoritePlaylists() {
-  localStorage.setItem("radio:favorite-playlists", JSON.stringify(state.favoritePlaylists));
-}
-
-function loadFavoritePlaylists() {
-  try {
-    const raw = localStorage.getItem("radio:favorite-playlists");
-    state.favoritePlaylists = raw ? JSON.parse(raw) : [];
-  } catch(e) {
-    state.favoritePlaylists = [];
-  }
-}
-
-function saveBlacklistPlaylists() {
-  localStorage.setItem("radio:blacklist-playlists", JSON.stringify(state.blacklistPlaylists));
-}
-
-function loadBlacklistPlaylists() {
-  try {
-    const raw = localStorage.getItem("radio:blacklist-playlists");
-    state.blacklistPlaylists = raw ? JSON.parse(raw) : [];
-  } catch(e) {
-    state.blacklistPlaylists = [];
-  }
-}
-
 /* Networking helpers */
 async function fetchJson(url) {
   const resp = await fetch(url, { headers: { Accept: "application/json" }, cache: "no-store" });
@@ -2666,6 +2147,19 @@ function parseServerStatus(json, u) {
   }
 
   return null;
+}
+
+function saveFavorites() {
+  localStorage.setItem("radio:favorites", JSON.stringify(state.favorites));
+}
+
+function loadFavorites() {
+  try {
+    const raw = localStorage.getItem("radio:favorites");
+    state.favorites = raw ? JSON.parse(raw) : [];
+  } catch(e) {
+    state.favorites = [];
+  }
 }
 </script>
 </html>
