@@ -29,7 +29,8 @@ body{margin:0;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Canta
 .card:hover{transform:translateY(-1px);border-color:#2b3a50}
 .card .title{display:block;font-weight:600;color:var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
 .card .meta{color:var(--muted);font-size:13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;}
-.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px}
+.card-actions{position:absolute;top:8px;right:8px;display:flex;gap:4px;opacity:0;transition:opacity 0.2s}
+.card:hover .card-actions{opacity:1}
 
 /* Sub-pages station list: responsive columns (3 on desktop, scaling down to 1 on mobile) */
 .stations{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:0;list-style:none; padding-bottom: 96px;}
