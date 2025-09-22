@@ -303,7 +303,7 @@ a.link:hover{text-decoration:underline}
 </svg>
 
 <header class="topbar">
-  <a class="brand" id="brand" href="#/">
+  <a class="brand" id="brand" href="#">
     <svg class="icon" aria-hidden="true" focusable="false"><use href="#i-headphones" xlink:href="#i-headphones"></use></svg>
     <span>My Radio</span>
   </a>
@@ -457,6 +457,7 @@ const state = {
   // New states
   favorites: [],
   buffering: false,
+  shuffleTargetSlug: null,
   eqPresets: { 
     flat: {bass:0,mid:0,treble:0}, 
     rock: {bass:6,mid:0,treble:4}, 
@@ -527,7 +528,7 @@ function wireUI() {
   els.prevBtn.addEventListener("click", playPrev);
   els.nextBtn.addEventListener("click", playNext);
   els.shuffleBtn.addEventListener("click", shuffle);
-  els.homeBtn.addEventListener("click", () => { location.hash = "#/"; });
+  els.homeBtn.addEventListener("click", () => { location.hash = ""; onRouteChange(); });
 
   els.muteBtn.addEventListener("click", toggleMute);
   els.volumeRange.addEventListener("input", (e) => setVolume(parseFloat(e.target.value)));
@@ -642,7 +643,7 @@ async function boot() {
     const index = await fetchJson(state.indexBase.href);
     state.index = index;
     buildPlaylistMap(index);
-    location.hash !== "#/" ? onRouteChange() : location.hash = "#/"; // Load home by default
+    onRouteChange(); // Always call onRouteChange to handle current hash (including empty)
   } catch (err) {
     showError(`Failed to load index: ${escapeHtml(err.message || err)}`);
   } finally {
@@ -730,7 +731,7 @@ function onRouteChange() {
 
 function getHashParts() {
   const h = (location.hash || "").replace(/^#/,"");
-  return h.split("/").filter(Boolean);
+  return h.split("/").map(p => p.trim()).filter(Boolean);
 }
 function updateTitle(t) {
   document.title = t ? `${t} — ${CONFIG.SITE_TITLE}` : CONFIG.SITE_TITLE;
@@ -739,8 +740,10 @@ function updateBrandText(mode="home") {
   if (!els.brand) return;
   if (mode === "back") {
     els.brand.innerHTML = `${icon("chevron-left", 18)} <span>Go Back</span>`;
+    els.brand.href = "#";
   } else {
     els.brand.innerHTML = `${icon("headphones", 18)} <span>${CONFIG.SITE_TITLE}</span>`;
+    els.brand.href = "#";
   }
 }
 function setSearchPlaceholder(p) {
@@ -834,7 +837,7 @@ function renderFavorites(skipTitle = false) {
   if (!visible.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.innerHTML = `<p>No favorites match “${escapeHtml(q)}”. <a href="#/" class="link">Browse playlists</a> and star some stations!</p>`;
+    empty.innerHTML = `<p>No favorites match “${escapeHtml(q)}”. <a href="#" class="link" onclick="location.hash=''">Browse playlists</a> and star some stations!</p>`;
     frag.appendChild(empty);
     els.app.replaceChildren(frag);
     return;
@@ -943,8 +946,21 @@ async function renderPlaylist(slug) {
     state.currentPlaylistUrl = url;
     state.currentItems = Array.isArray(data.items) ? data.items : [];
     renderPlaylistContent(data);
+
+    // Auto-play random stream if this was a shuffle target
+    if (state.shuffleTargetSlug === slug) {
+      if (state.currentItems.length > 0) {
+        const i = Math.floor(Math.random() * state.currentItems.length);
+        playFromList(state.currentItems, i);
+      }
+      state.shuffleTargetSlug = null;
+    }
   } catch (err) {
     const last = err?.__lastTried || candidates[candidates.length - 1] || fallback;
+    // Clear shuffle flag on error to avoid stale state
+    if (state.shuffleTargetSlug === slug) {
+      state.shuffleTargetSlug = null;
+    }
     console.error("Playlist fetch failed:", last, err);
     els.app.innerHTML = `
       <div class="error">
@@ -1094,13 +1110,13 @@ function playFromList(list, idx) {
   if (!item) return;
   state.currentIndex = idx;
   setNowPlaying(item);
-  loadAndPlay(item.url);
+  loadAndPlay(item.url, item);
   refreshActiveStationHighlight();
 }
 
 function setNowPlaying(item) {
   els.nowStation.textContent = item?.name || "Unknown Station";
-  els.nowSong.textContent = "Fetching...";
+  els.nowSong.textContent = "";
   if (els.nowMeta) els.nowMeta.textContent = "";
 
   state.currentSong = "";
@@ -1109,9 +1125,6 @@ function setNowPlaying(item) {
   els.playerBar.hidden = false;
 
   persistSession();
-
-  // Start robust "Now Playing" pipeline for this stream
-  startNowPlayingPipeline(item);
 
   // Set MediaSession for better mobile handling (prevents pausing on Android)
   if ("mediaSession" in navigator) {
@@ -1306,12 +1319,17 @@ function setBuffering(v) {
   } else {
     updatePlayIcon(!els.audio.paused);
   }
+  renderMetaLine();
 }
 
-function loadAndPlay(url) {
+function loadAndPlay(url, item) {
   try {
+    if (!item) item = { name: "Unknown", url };
+    els.audio.pause();
+    els.audio.src = "";
     els.audio.src = url || "";
     if (!url) { pauseAudio(); return; }
+    startNowPlayingPipeline(item);
     playAudio();
     schedulePlayWatchdog();
   } catch (e) {
@@ -1333,7 +1351,7 @@ function playNext() {
   state.currentIndex = i;
   const it = state.currentItems[i];
   setNowPlaying(it);
-  loadAndPlay(it.url);
+  loadAndPlay(it.url, it);
   refreshActiveStationHighlight();
 }
 function playPrev() {
@@ -1342,16 +1360,20 @@ function playPrev() {
   state.currentIndex = i;
   const it = state.currentItems[i];
   setNowPlaying(it);
-  loadAndPlay(it.url);
+  loadAndPlay(it.url, it);
   refreshActiveStationHighlight();
 }
 async function shuffle() {
-  if (state.currentRoute === "p" && state.currentItems.length > 0) {
+  if (state.currentRoute === "favorites" && state.favorites.length > 0) {
+    const i = Math.floor(Math.random() * state.favorites.length);
+    playFromList(state.favorites, i);
+  } else if (state.currentRoute === "p" && state.currentItems.length > 0) {
     const i = Math.floor(Math.random() * state.currentItems.length);
     playFromList(state.currentItems, i);
   } else if (state.playlistMap.size > 0) {
     const keys = Array.from(state.playlistMap.keys());
     const k = keys[Math.floor(Math.random() * keys.length)];
+    state.shuffleTargetSlug = k;
     location.hash = `#/p/${k}`;
   }
 }
@@ -1443,7 +1465,6 @@ function startNowPlayingPipeline(item) {
   // Reset song + tech meta baselines
   state.currentSong = "";
   state.songPriority = 0;
-  renderMetaLine();
 
   // Cleanup previous watchers
   stopNowPlayingWatchers();
@@ -1757,7 +1778,7 @@ function refreshActiveStationHighlight() {
       const name = n.querySelector(".name");
       if (name && cur && name.textContent === (cur.name || "")) {
         n.classList.add("active");
-        n.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        n.scrollIntoView({ behavior: "smooth", block: "center" });
         break;
       }
     }
